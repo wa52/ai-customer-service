@@ -1,0 +1,26 @@
+customer_service:
+  perception:
+    enabled: true
+  memory:
+    session:
+      enabled: true
+      provider: memory
+    customer:
+      enabled: false
+  planning:
+    enabled: true
+  capabilities:
+    product:
+      enabled: false
+    vision_search:
+      enabled: false
+    pricing:
+      enabled: false
+    knowledge_rag:
+      enabled: false
+  tool_calling:
+    jev:
+      enabled: false
+  human_handoff:
+    enabled: true
+
