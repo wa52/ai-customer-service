@@ -9,7 +9,10 @@
 - Perception / Memory / Dialogue Planner / Response Generator 分层
 - React + TypeScript + Vite Chat Widget
 - 结构化输出 Schema 与能力开关配置样例
-- 当前使用内存实现，后续可替换 PostgreSQL、Redis、LLM Gateway、Product/Vision/RAG/Pricing Capability
+- `CustomerServiceRuntime → LLMGateway → ToolRegistry → Capability → LLM` 主链路
+- GPT / DeepSeek OpenAI-compatible Chat Completions、原生 Tool Calling、真实模型 SSE 流式转发
+- 未配置模型时仅使用明确标注的本地 fallback；生产配置见 `.env.example`
+- 当前 Session 使用内存实现，后续可替换 PostgreSQL、Redis、Vision/RAG/Pricing Capability
 
 ## 启动后端
 
@@ -36,4 +39,3 @@ backend/app/api/               Chat / Session / Upload API
 backend/app/schemas/           统一结构化输出模型
 apps/chat-widget/              可嵌入的 React 客服窗口
 ```
-

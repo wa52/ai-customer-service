@@ -19,3 +19,8 @@ class ProductCapability:
             return CapabilityResult(success=False, error={"code": "NOT_FOUND", "message": "Product not found"}, sources=["product_catalog"])
         return CapabilityResult(success=True, data={"product": product}, confidence=1.0, sources=["product_catalog"])
 
+    def search_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:
+        return self.search(arguments)
+
+    def get_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:
+        return self.get(str(arguments.get("sku", "")))

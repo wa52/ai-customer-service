@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
@@ -11,26 +11,28 @@ from app.services.memory import memory_store
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-def _handle(request: ChatRequest) -> MessageResponse:
+def _validate_session(request: ChatRequest) -> None:
     if memory_store.get_session(request.session_id) is None:
         raise HTTPException(status_code=404, detail="Session not found")
-    return customer_service_runtime.handle_message(request.session_id, request.content)
 
 
 @router.post("/messages", response_model=ChatResponse)
-def send_message(request: ChatRequest) -> ChatResponse:
-    result = _handle(request)
+async def send_message(request: ChatRequest) -> ChatResponse:
+    _validate_session(request)
+    result = await customer_service_runtime.handle_message(request.session_id, request.content)
     return ChatResponse(message=result, session=memory_store.get_session(request.session_id))
 
 
 @router.post("/messages/stream")
-def stream_message(request: ChatRequest) -> StreamingResponse:
-    result = _handle(request)
+async def stream_message(request: ChatRequest) -> StreamingResponse:
+    _validate_session(request)
 
-    def events() -> Iterator[str]:
-        for token in result.content.split(" "):
-            yield f"event: token\ndata: {json.dumps({'text': token + ' '}, ensure_ascii=False)}\n\n"
-        yield f"event: message\ndata: {json.dumps(result.model_dump(mode='json'), ensure_ascii=False)}\n\n"
+    async def events() -> AsyncIterator[str]:
+        async for token in customer_service_runtime.stream_message(request.session_id, request.content):
+            yield f"event: token\ndata: {json.dumps({'text': token}, ensure_ascii=False)}\n\n"
+        result = memory_store.latest_assistant(request.session_id)
+        if result is not None:
+            yield f"event: message\ndata: {json.dumps(result.model_dump(mode='json'), ensure_ascii=False)}\n\n"
         yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")

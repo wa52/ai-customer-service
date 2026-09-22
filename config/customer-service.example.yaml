@@ -11,7 +11,7 @@ customer_service:
     enabled: true
   capabilities:
     product:
-      enabled: false
+      enabled: true
     vision_search:
       enabled: false
     pricing:
@@ -23,4 +23,3 @@ customer_service:
       enabled: false
   human_handoff:
     enabled: true
-
