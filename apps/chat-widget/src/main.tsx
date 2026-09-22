@@ -16,11 +16,24 @@ function App() {
     const content = input.trim();
     if (!content || !sessionId || busy) return;
     setInput(''); setMessages((current) => [...current, { role: 'customer', content }]); setBusy(true);
-    const response = await fetch(`${API}/chat/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, content }) });
-    const data = await response.json(); setMessages((current) => [...current, { role: 'assistant', content: data.message.content }]); setBusy(false);
+    const response = await fetch(`${API}/chat/messages/stream`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ session_id: sessionId, content }) });
+    if (!response.body) throw new Error('Streaming is unavailable');
+    const reader = response.body.getReader(); const decoder = new TextDecoder(); let buffer = ''; let streamed = '';
+    setMessages((current) => [...current, { role: 'assistant', content: '' }]);
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split('\n\n'); buffer = events.pop() ?? '';
+      for (const event of events) {
+        if (!event.startsWith('event: token')) continue;
+        const dataLine = event.split('\n').find((line) => line.startsWith('data: ')); if (!dataLine) continue;
+        streamed += JSON.parse(dataLine.slice(6)).text;
+        setMessages((current) => [...current.slice(0, -1), { role: 'assistant', content: streamed }]);
+      }
+    }
+    setBusy(false);
   }
   return <div className="widget"><header><div className="mark">✦</div><div><strong>Product concierge</strong><small>Online · AI assisted</small></div><button>×</button></header><section className="messages">{messages.map((message, index) => <div key={index} className={`message ${message.role}`}><p>{message.content}</p></div>)}{busy && <div className="typing">Checking the best way to help…</div>}</section><footer><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about a product…" /><button onClick={send}>Send ↗</button></footer></div>;
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode><App /></StrictMode>);
-

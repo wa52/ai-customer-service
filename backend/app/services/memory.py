@@ -7,11 +7,21 @@ from app.schemas.chat import MessageResponse, SessionResponse
 
 @dataclass
 class ConversationState:
+    current_intent: str | None = None
     requirements: dict[str, object] = field(default_factory=dict)
     candidate_products: list[str] = field(default_factory=list)
     selected_product: str | None = None
     missing_information: list[str] = field(default_factory=list)
     last_action: str | None = None
+
+    def context(self) -> dict[str, object]:
+        return {
+            "requirements": dict(self.requirements),
+            "candidate_products": list(self.candidate_products),
+            "selected_product": self.selected_product,
+            "missing_information": list(self.missing_information),
+            "last_action": self.last_action,
+        }
 
 
 @dataclass
@@ -54,4 +64,3 @@ class InMemoryMemoryStore:
 
 
 memory_store = InMemoryMemoryStore()
-

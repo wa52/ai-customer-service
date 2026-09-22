@@ -28,7 +28,9 @@ def stream_message(request: ChatRequest) -> StreamingResponse:
     result = _handle(request)
 
     def events() -> Iterator[str]:
-        yield f"event: message\ndata: {json.dumps(result.model_dump(), ensure_ascii=False)}\n\n"
+        for token in result.content.split(" "):
+            yield f"event: token\ndata: {json.dumps({'text': token + ' '}, ensure_ascii=False)}\n\n"
+        yield f"event: message\ndata: {json.dumps(result.model_dump(mode='json'), ensure_ascii=False)}\n\n"
         yield "event: done\ndata: {}\n\n"
 
     return StreamingResponse(events(), media_type="text/event-stream")
@@ -39,4 +41,3 @@ def request_handoff(request: ChatRequest) -> MessageResponse:
     if memory_store.get_session(request.session_id) is None:
         raise HTTPException(status_code=404, detail="Session not found")
     return customer_service_runtime.handoff(request.session_id)
-

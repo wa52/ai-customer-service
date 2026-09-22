@@ -29,3 +29,10 @@ class DialogueAction(BaseModel):
     field: str | None = None
     reason_code: str | None = None
 
+
+class CapabilityResult(BaseModel):
+    success: bool
+    data: dict[str, object] = Field(default_factory=dict)
+    confidence: float | None = Field(default=None, ge=0, le=1)
+    sources: list[str] = Field(default_factory=list)
+    error: dict[str, str] | None = None
