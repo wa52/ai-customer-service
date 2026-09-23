@@ -32,12 +32,19 @@ function selectProvider(value, button, current = '') {
   const preset = providers.find((item) => item[0] === value);
   $('llm_provider').value = value;
   document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item === button));
-  if (preset) { $('llm_base_url').value = preset[3]; updateModels(preset[4], current || preset[4][0] || ''); }
+  if (preset) {
+    $('llm_base_url').value = preset[3];
+    $('llm_base_url').readOnly = value !== 'openai_compatible';
+    $('llm_base_url').classList.toggle('official-url', value !== 'openai_compatible');
+    updateModels(preset[4], current || preset[4][0] || '');
+  }
 }
 
 function render(data) {
   $('llm_provider').value = data.llm_provider || 'openai_compatible';
   $('llm_base_url').value = data.llm_base_url || '';
+  $('llm_base_url').readOnly = data.llm_provider !== 'openai_compatible';
+  $('llm_base_url').classList.toggle('official-url', data.llm_provider !== 'openai_compatible');
   const provider = providers.find((item) => item[0] === data.llm_provider) || providers.at(-1);
   updateModels(provider[4], data.llm_model || '');
   temp.value = data.llm_temperature ?? 0.3;
