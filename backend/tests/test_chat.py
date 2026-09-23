@@ -9,6 +9,7 @@ from app.customer_service.runtime import CustomerServiceRuntime
 from app.main import app
 from app.runtime.llm.gateway import LLMResponse, StreamEvent, ToolCall
 from app.services.memory import memory_store
+from app.services.memory import detect_language
 import app.api.chat as chat_api
 
 
@@ -88,3 +89,12 @@ def test_handoff_marks_session() -> None:
     response = client.post("/api/v1/chat/handoff", json={"session_id": session["id"], "content": "human please"})
     assert response.status_code == 200
     assert response.json()["action"] == "request_human_handoff"
+
+
+def test_customer_language_is_detected_and_added_to_model_context() -> None:
+    session = client.post("/api/v1/chat/sessions").json()
+    client.post("/api/v1/chat/messages", json={"session_id": session["id"], "content": "我想找黑色戒指"})
+    stored = memory_store.get_session(session["id"])
+    assert detect_language("我想找黑色戒指") == "zh"
+    assert stored is not None and stored.language == "zh"
+    assert "same language" in str(memory_store.build_llm_messages(session["id"])[0]["content"])

@@ -111,12 +111,13 @@ class DeterministicGateway(LLMGateway):
 
     async def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse:
         user = next((item["content"].lower() for item in reversed(messages) if item["role"] == "user"), "")
+        chinese = any("\u4e00" <= char <= "\u9fff" for char in user)
         tool_names = {tool["function"]["name"] for tool in tools}
         if "ring" in user and "search_products" in tool_names and any(word in user for word in ("need", "want", "looking")):
             return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", {"category": "ring"})])
         if any(word in user for word in ("human", "sales", "人工")):
-            return LLMResponse(content="I’ll connect you with a human sales colleague.")
-        return LLMResponse(content="Thanks for reaching out. Could you share the product or SKU you’re asking about?")
+            return LLMResponse(content="我会为您转接人工销售同事。" if chinese else "I’ll connect you with a human sales colleague.")
+        return LLMResponse(content="感谢您的咨询。请告诉我您想了解的产品或 SKU。" if chinese else "Thanks for reaching out. Could you share the product or SKU you’re asking about?")
 
     async def stream(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> AsyncIterator[StreamEvent]:
         response = await self.complete(messages, tools)
