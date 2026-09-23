@@ -53,8 +53,18 @@ def test_native_tool_calling_executes_product_tool(isolated_runtime: FakeGateway
 
 
 def test_tool_configuration_controls_registry() -> None:
-    assert {tool["function"]["name"] for tool in ActionExecutor(Settings(product_capability_enabled=False)).definitions()} == {"request_human_handoff"}
-    assert len(ActionExecutor(Settings(product_capability_enabled=True)).definitions()) == 3
+    disabled = Settings(product_capability_enabled=False, pricing_capability_enabled=False, knowledge_capability_enabled=False, vision_capability_enabled=False)
+    assert {tool["function"]["name"] for tool in ActionExecutor(disabled).definitions()} == {"request_human_handoff"}
+    assert len(ActionExecutor(Settings(product_capability_enabled=True)).definitions()) == 6
+
+
+def test_mock_capabilities_return_structured_results() -> None:
+    executor = ActionExecutor(Settings())
+    session = client.post("/api/v1/chat/sessions").json()
+    state = memory_store.get_state(session["id"])
+    assert executor.execute("get_product_price", {"sku": "R1001", "quantity": 100}, state).data["unit_price"] == 2.8
+    assert executor.execute("search_knowledge", {"question": "What material?"}, state).data["mode"] == "mock"
+    assert executor.execute("search_similar_product_by_image", {"description": "black simple ring"}, state).data["mode"] == "mock"
 
 
 def test_invalid_tool_arguments_are_returned_as_structured_error() -> None:

@@ -18,6 +18,16 @@ class AdminConfigRequest(BaseModel):
     llm_model: str = Field(default="", max_length=200)
     llm_temperature: float = Field(default=0.3, ge=0, le=2)
     product_capability_enabled: bool = True
+    product_data_source: str = "mock"
+    pricing_capability_enabled: bool = True
+    pricing_data_source: str = "mock"
+    pricing_base_url: str = ""
+    knowledge_capability_enabled: bool = True
+    knowledge_data_source: str = "mock"
+    knowledge_base_url: str = ""
+    vision_capability_enabled: bool = True
+    vision_data_source: str = "mock"
+    vision_base_url: str = ""
 
 
 def _masked_key(api_key: str) -> str:
@@ -39,6 +49,12 @@ def _public_config(settings: Settings) -> dict[str, Any]:
         "api_key_masked": _masked_key(settings.llm_api_key),
         "memory_provider": settings.memory_provider,
         "product_capability_enabled": settings.product_capability_enabled,
+        "capabilities": {
+            "product": {"enabled": settings.product_capability_enabled, "source": settings.product_data_source},
+            "pricing": {"enabled": settings.pricing_capability_enabled, "source": settings.pricing_data_source, "base_url": settings.pricing_base_url},
+            "knowledge": {"enabled": settings.knowledge_capability_enabled, "source": settings.knowledge_data_source, "base_url": settings.knowledge_base_url},
+            "vision": {"enabled": settings.vision_capability_enabled, "source": settings.vision_data_source, "base_url": settings.vision_base_url},
+        },
         "storage_note": "模型配置仅保存在当前后端进程内存中，重启后需要重新填写。",
     }
 

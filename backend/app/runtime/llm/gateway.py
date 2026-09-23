@@ -110,11 +110,37 @@ class DeterministicGateway(LLMGateway):
         pass
 
     async def complete(self, messages: list[dict[str, Any]], tools: list[dict[str, Any]]) -> LLMResponse:
-        user = next((item["content"].lower() for item in reversed(messages) if item["role"] == "user"), "")
+        raw_user = next((item["content"] for item in reversed(messages) if item["role"] == "user"), "")
+        user = raw_user.lower()
         chinese = any("\u4e00" <= char <= "\u9fff" for char in user)
         tool_names = {tool["function"]["name"] for tool in tools}
+        tool_messages = [item for item in messages if item["role"] == "tool"]
+        if tool_messages:
+            try:
+                result = json.loads(str(tool_messages[-1]["content"]))
+                data = result.get("data", {})
+            except (json.JSONDecodeError, TypeError):
+                data = {}
+            if "unit_price" in data:
+                return LLMResponse(content=f"该产品的模拟参考价为 {data['currency']} {data['unit_price']} / 件，最终价格需要销售确认。" if chinese else f"The mock reference price is {data['currency']} {data['unit_price']} per piece. Final pricing requires sales confirmation.")
+            if "matches" in data:
+                skus = ", ".join(str(item["sku"]) for item in data["matches"])
+                return LLMResponse(content=f"根据图片描述，模拟匹配到：{skus}。请上传图片或告诉我更多细节。" if chinese else f"The mock visual search matched: {skus}. Please upload an image or share more details.")
+            if "answer" in data:
+                return LLMResponse(content="我们的不锈钢饰品默认使用 316L 材质，样品和生产细节可以由销售进一步确认。" if chinese else data["answer"])
+            if "products" in data:
+                skus = ", ".join(str(item["sku"]) for item in data["products"])
+                return LLMResponse(content=f"模拟产品目录匹配到：{skus}。" if chinese else f"The mock catalog matched: {skus}.")
         if "ring" in user and "search_products" in tool_names and any(word in user for word in ("need", "want", "looking")):
             return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", {"category": "ring"})])
+        import re
+        sku_match = re.search(r"r\d{4}", user)
+        if any(word in user for word in ("price", "报价", "价格", "多少钱")) and "get_product_price" in tool_names and sku_match:
+            return LLMResponse(tool_calls=[ToolCall("fallback_price", "get_product_price", {"sku": sku_match.group(0).upper()})])
+        if any(word in user for word in ("image", "photo", "图片", "照片", "找款", "相似")) and "search_similar_product_by_image" in tool_names:
+            return LLMResponse(tool_calls=[ToolCall("fallback_vision", "search_similar_product_by_image", {"description": raw_user})])
+        if any(word in user for word in ("material", "specification", "材质", "材料", "316l")) and "search_knowledge" in tool_names:
+            return LLMResponse(tool_calls=[ToolCall("fallback_knowledge", "search_knowledge", {"question": raw_user})])
         if any(word in user for word in ("human", "sales", "人工")):
             return LLMResponse(content="我会为您转接人工销售同事。" if chinese else "I’ll connect you with a human sales colleague.")
         return LLMResponse(content="感谢您的咨询。请告诉我您想了解的产品或 SKU。" if chinese else "Thanks for reaching out. Could you share the product or SKU you’re asking about?")

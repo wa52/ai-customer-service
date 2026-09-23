@@ -13,6 +13,16 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_temperature: float = Field(default=0.3, ge=0, le=2)
     product_capability_enabled: bool = True
+    product_data_source: str = "mock"
+    pricing_capability_enabled: bool = True
+    pricing_data_source: str = "mock"
+    pricing_base_url: str = ""
+    knowledge_capability_enabled: bool = True
+    knowledge_data_source: str = "mock"
+    knowledge_base_url: str = ""
+    vision_capability_enabled: bool = True
+    vision_data_source: str = "mock"
+    vision_base_url: str = ""
     memory_provider: str = "memory"
     redis_url: str = "redis://localhost:6379/0"
     database_url: str = "postgresql://postgres:postgres@localhost:5432/customer_service"

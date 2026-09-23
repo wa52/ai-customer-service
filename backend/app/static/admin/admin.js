@@ -52,6 +52,9 @@ function render(data) {
   temp.value = data.llm_temperature ?? 0.3;
   $('temperature-value').value = temp.value;
   $('product_capability_enabled').checked = Boolean(data.product_capability_enabled);
+  $('pricing_capability_enabled').checked = Boolean(data.capabilities?.pricing?.enabled ?? true);
+  $('knowledge_capability_enabled').checked = Boolean(data.capabilities?.knowledge?.enabled ?? true);
+  $('vision_capability_enabled').checked = Boolean(data.capabilities?.vision?.enabled ?? true);
   document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item.dataset.provider === activeProvider));
   $('status-title').textContent = data.configured ? '模型已连接' : '等待连接';
   $('status-subtitle').textContent = data.configured ? `${data.llm_provider} · 可开始对话` : '填写云端模型信息后即可使用';
@@ -79,7 +82,10 @@ form.addEventListener('submit', async (event) => {
   notice.textContent = '正在保存…';
   const response = await fetch('/api/v1/admin/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
     llm_provider: $('llm_provider').value, llm_base_url: $('llm_base_url').value.trim(), llm_model: $('llm_model').value,
-    llm_api_key: $('llm_api_key').value, llm_temperature: Number(temp.value), product_capability_enabled: $('product_capability_enabled').checked
+    llm_api_key: $('llm_api_key').value, llm_temperature: Number(temp.value), product_capability_enabled: $('product_capability_enabled').checked,
+    pricing_capability_enabled: $('pricing_capability_enabled').checked, pricing_data_source: 'mock',
+    knowledge_capability_enabled: $('knowledge_capability_enabled').checked, knowledge_data_source: 'mock',
+    vision_capability_enabled: $('vision_capability_enabled').checked, vision_data_source: 'mock'
   })});
   if (!response.ok) { notice.textContent = '保存失败，请检查输入'; notice.style.color = '#c45d4b'; return; }
   render(await response.json()); $('llm_api_key').value = ''; notice.textContent = '已保存，下一条消息立即使用新配置'; notice.style.color = '#3b9773';
