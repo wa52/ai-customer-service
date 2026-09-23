@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './styles.css';
 
 type Message = { role: 'customer' | 'assistant'; content: string };
-const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8000/api/v1';
+const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8011/api/v1';
 
 function App() {
   const [sessionId, setSessionId] = useState('');
