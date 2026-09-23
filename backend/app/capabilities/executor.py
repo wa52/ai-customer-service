@@ -2,6 +2,7 @@ from app.schemas.runtime import CapabilityResult
 from app.runtime.tool_calling.registry import ToolRegistry
 from app.capabilities.product import ProductCapability
 from app.capabilities.mock_services import MockKnowledgeCapability, MockPricingCapability, MockVisionCapability
+from app.capabilities.public_seed import PublicKnowledgeCapability, PublicPricingCapability, PublicProductCapability, PublicVisionCapability
 from app.config.settings import Settings, get_settings
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -45,10 +46,10 @@ class ActionExecutor:
     def __init__(self, settings: Settings | None = None) -> None:
         settings = settings or get_settings()
         self.registry = ToolRegistry()
-        self.product = ProductCapability()
-        self.pricing = MockPricingCapability()
-        self.knowledge = MockKnowledgeCapability()
-        self.vision = MockVisionCapability()
+        self.product = PublicProductCapability() if settings.product_data_source == "public_seed" else ProductCapability()
+        self.pricing = PublicPricingCapability() if settings.pricing_data_source == "public_seed" else MockPricingCapability()
+        self.knowledge = PublicKnowledgeCapability() if settings.knowledge_data_source == "public_seed" else MockKnowledgeCapability()
+        self.vision = PublicVisionCapability() if settings.vision_data_source == "public_seed" else MockVisionCapability()
         if settings.product_capability_enabled:
             self.registry.register({"type": "function", "function": {"name": "search_products", "description": "Search products by structured requirements. Return factual catalog matches only.", "parameters": ProductSearchArguments.model_json_schema()}}, self.product.search_tool, ProductSearchArguments)
             self.registry.register({"type": "function", "function": {"name": "get_product_information", "description": "Get factual specifications and MOQ for one SKU.", "parameters": ProductInformationArguments.model_json_schema()}}, self.product.get_tool, ProductInformationArguments)

@@ -1,0 +1,6 @@
+[
+  {"name":"Jewena","url":"https://jewena.com/wholesale/fashion-jewelry","kind":"public_catalog_and_reference_price","license_note":"Use only as external market reference; do not present as company inventory or quote."},
+  {"name":"Jewelry Design Dataset","url":"https://huggingface.co/datasets/sidd707/jewelry-design-dataset","kind":"vision_dataset","license_note":"Dataset page states MIT; verify upstream image rights before commercial use."},
+  {"name":"Outokumpu Supra","url":"https://www.outokumpu.com/en/products/product-ranges/supra","kind":"material_knowledge","license_note":"Use as technical reference, not a product certificate."},
+  {"name":"EUR-Lex REACH Annex XVII","url":"https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02006R1907-20250901","kind":"compliance_knowledge","license_note":"Regulatory text; validate jurisdiction and current revision before advice."}
+]

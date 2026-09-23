@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.capabilities.executor import ActionExecutor
+from app.capabilities.public_seed import PublicKnowledgeCapability, PublicProductCapability, PublicPricingCapability
 from app.config.settings import Settings
 from app.customer_service.runtime import CustomerServiceRuntime
 from app.main import app
@@ -73,6 +74,20 @@ def test_invalid_tool_arguments_are_returned_as_structured_error() -> None:
     assert result.success is False
     assert result.error is not None
     assert result.error["code"] == "INVALID_ARGUMENTS"
+
+
+def test_public_seed_capabilities_keep_external_provenance() -> None:
+    public = ActionExecutor(Settings(product_data_source="public_seed", pricing_data_source="public_seed", knowledge_data_source="public_seed", vision_data_source="public_seed"))
+    products = public.execute("search_products", {"category": "ring"}, memory_store.get_state(client.post("/api/v1/chat/sessions").json()["id"]))
+    assert products.success is True
+    assert products.sources == ["public_product_catalog"]
+    assert products.data["products"][0]["is_external_reference"] is True
+    price = public.execute("get_product_price", {"sku": "unknown"}, memory_store.get_state(client.post("/api/v1/chat/sessions").json()["id"]))
+    assert price.success is False
+    assert price.error["code"] == "PRICE_NOT_FOUND"
+    assert isinstance(public.product, PublicProductCapability)
+    assert isinstance(public.pricing, PublicPricingCapability)
+    assert isinstance(public.knowledge, PublicKnowledgeCapability)
 
 
 def test_streaming_forwards_gateway_chunks() -> None:
