@@ -8,7 +8,7 @@ const providers = [
   ['anthropic', 'Anthropic', 'Claude 系列', 'https://api.anthropic.com/v1', ['claude-sonnet-4-6', 'claude-opus-4-8', 'claude-haiku-4-5-20251001']],
   ['gemini', 'Google Gemini', 'Gemini 系列', 'https://generativelanguage.googleapis.com/v1beta/openai', ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-pro-preview']],
   ['qwen', '通义千问', 'Qwen 系列', 'https://dashscope.aliyuncs.com/compatible-mode/v1', ['qwen3.8-max', 'qwen3.8-flash', 'qwen3.7-plus', 'qwen3.7-flash', 'qwen3-coder-plus']],
-  ['zhipu', '智谱 GLM', 'GLM 系列', 'https://open.bigmodel.cn/api/paas/v4', ['glm-5.3', 'glm-5.2', 'glm-5.1', 'glm-5-turbo']],
+  ['zhipu', '智谱 GLM', 'GLM 系列', 'https://open.bigmodel.cn/api/paas/v4', ['glm-5-turbo', 'glm-5', 'glm-4.7', 'glm-4.6']],
   ['moonshot', '月之暗面', 'Kimi 系列', 'https://api.moonshot.cn/v1', ['kimi-k2.6', 'kimi-k2.5', 'kimi-k3', 'kimi-k2.7-code']],
   ['minimax', 'MiniMax', 'M 系列', 'https://api.minimax.chat/v1', ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5']],
   ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', []],
