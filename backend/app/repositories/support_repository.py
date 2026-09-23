@@ -36,9 +36,14 @@ class PostgresKnowledgeCapability:
         import psycopg
 
         terms = [term for term in question.split() if len(term) > 2]
-        pattern = "%" + "%".join(terms[:5]) + "%"
+        terms = sorted(terms[:8] or [question], key=len, reverse=True)
+        patterns = [f"%{term}%" for term in terms]
+        predicates = " OR ".join(["question ILIKE %s", "answer ILIKE %s"] * len(patterns))
+        values = [value for pattern in patterns for value in (pattern, pattern)]
+        ranking = "CASE " + " ".join("WHEN question ILIKE %s OR answer ILIKE %s THEN %s" for _ in patterns) + " ELSE 999 END"
+        ranking_values = [value for index, pattern in enumerate(patterns) for value in (pattern, pattern, index)]
         with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
-            row = connection.execute("SELECT answer, topic, source_name, source_url, data_kind, is_external_reference FROM knowledge_documents WHERE question ILIKE %s OR answer ILIKE %s ORDER BY id LIMIT 1", [pattern, pattern]).fetchone()
+            row = connection.execute(f"SELECT answer, topic, source_name, source_url, data_kind, is_external_reference FROM knowledge_documents WHERE {predicates} ORDER BY {ranking}, id LIMIT 1", values + ranking_values).fetchone()
         if not row:
             return CapabilityResult(success=False, error={"code": "KNOWLEDGE_NOT_FOUND", "message": "No PostgreSQL knowledge record matched"}, sources=["postgres_knowledge"])
         return CapabilityResult(success=True, data=dict(row), confidence=0.8, sources=["postgres_knowledge"])
@@ -54,9 +59,12 @@ class PostgresVisionCapability:
     def search(self, description: str) -> CapabilityResult:
         import psycopg
 
-        pattern = "%" + "%".join(term for term in description.split() if len(term) > 2) + "%"
+        terms = [term for term in description.split() if len(term) > 2][:8] or [description]
+        patterns = [f"%{term}%" for term in terms]
+        predicates = " OR ".join(["category ILIKE %s", "description ILIKE %s"] * len(patterns))
+        values = [value for pattern in patterns for value in (pattern, pattern)]
         with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
-            rows = connection.execute("SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference FROM vision_metadata WHERE category ILIKE %s OR description ILIKE %s LIMIT 10", [pattern, pattern]).fetchall()
+            rows = connection.execute(f"SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference FROM vision_metadata WHERE {predicates} LIMIT 10", values).fetchall()
         return CapabilityResult(success=True, data={"matches": [dict(row) for row in rows], "description": description, "mode": "postgres_metadata", "note": "PostgreSQL metadata search is active; vector embedding search is a later optimization."}, confidence=0.45 if rows else 0.1, sources=["postgres_vision_metadata"])
 
     def search_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:
