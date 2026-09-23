@@ -5,6 +5,7 @@ from app.capabilities.mock_services import MockKnowledgeCapability, MockPricingC
 from app.capabilities.public_seed import PublicKnowledgeCapability, PublicPricingCapability, PublicProductCapability, PublicVisionCapability
 from app.repositories.product_capability import RepositoryProductCapability
 from app.repositories.product_repository import PostgresProductRepository
+from app.repositories.support_repository import PostgresKnowledgeCapability, PostgresPricingCapability, PostgresVisionCapability
 from app.config.settings import Settings, get_settings
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -49,9 +50,9 @@ class ActionExecutor:
         settings = settings or get_settings()
         self.registry = ToolRegistry()
         self.product = PublicProductCapability() if settings.product_data_source == "public_seed" else RepositoryProductCapability(PostgresProductRepository(settings.database_url), "postgres_product_catalog") if settings.product_data_source == "postgres" else ProductCapability()
-        self.pricing = PublicPricingCapability() if settings.pricing_data_source == "public_seed" else MockPricingCapability()
-        self.knowledge = PublicKnowledgeCapability() if settings.knowledge_data_source == "public_seed" else MockKnowledgeCapability()
-        self.vision = PublicVisionCapability() if settings.vision_data_source == "public_seed" else MockVisionCapability()
+        self.pricing = PostgresPricingCapability(settings.database_url) if settings.pricing_data_source == "postgres" else PublicPricingCapability() if settings.pricing_data_source == "public_seed" else MockPricingCapability()
+        self.knowledge = PostgresKnowledgeCapability(settings.database_url) if settings.knowledge_data_source == "postgres" else PublicKnowledgeCapability() if settings.knowledge_data_source == "public_seed" else MockKnowledgeCapability()
+        self.vision = PostgresVisionCapability(settings.database_url) if settings.vision_data_source == "postgres" else PublicVisionCapability() if settings.vision_data_source == "public_seed" else MockVisionCapability()
         if settings.product_capability_enabled:
             self.registry.register({"type": "function", "function": {"name": "search_products", "description": "Search products by structured requirements. Return factual catalog matches only.", "parameters": ProductSearchArguments.model_json_schema()}}, self.product.search_tool, ProductSearchArguments)
             self.registry.register({"type": "function", "function": {"name": "get_product_information", "description": "Get factual specifications and MOQ for one SKU.", "parameters": ProductInformationArguments.model_json_schema()}}, self.product.get_tool, ProductInformationArguments)

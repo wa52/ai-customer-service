@@ -122,10 +122,10 @@ class DeterministicGateway(LLMGateway):
             except (json.JSONDecodeError, TypeError):
                 data = {}
             if "unit_price" in data:
-                return LLMResponse(content=f"该产品的模拟参考价为 {data['currency']} {data['unit_price']} / 件，最终价格需要销售确认。" if chinese else f"The mock reference price is {data['currency']} {data['unit_price']} per piece. Final pricing requires sales confirmation.")
+                return LLMResponse(content=f"该产品的公开参考价为 {data['currency']} {data['unit_price']} / 件，最终价格需要销售确认。" if chinese else f"The public reference price is {data['currency']} {data['unit_price']} per piece. Final pricing requires sales confirmation.")
             if "matches" in data:
-                skus = ", ".join(str(item["sku"]) for item in data["matches"])
-                return LLMResponse(content=f"根据图片描述，模拟匹配到：{skus}。请上传图片或告诉我更多细节。" if chinese else f"The mock visual search matched: {skus}. Please upload an image or share more details.")
+                identifiers = ", ".join(str(item.get("sku") or item.get("image_id")) for item in data["matches"])
+                return LLMResponse(content=f"根据图片描述，匹配到：{identifiers}。请上传图片或告诉我更多细节。" if chinese else f"The visual search matched: {identifiers}. Please upload an image or share more details.")
             if "answer" in data:
                 return LLMResponse(content="我们的不锈钢饰品默认使用 316L 材质，样品和生产细节可以由销售进一步确认。" if chinese else data["answer"])
             if "products" in data:
@@ -134,7 +134,7 @@ class DeterministicGateway(LLMGateway):
         if "ring" in user and "search_products" in tool_names and any(word in user for word in ("need", "want", "looking")):
             return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", {"category": "ring"})])
         import re
-        sku_match = re.search(r"r\d{4}", user)
+        sku_match = re.search(r"(?:r\d{4}|jw-[a-f0-9]{8}-\d{2})", user)
         if any(word in user for word in ("price", "报价", "价格", "多少钱")) and "get_product_price" in tool_names and sku_match:
             return LLMResponse(tool_calls=[ToolCall("fallback_price", "get_product_price", {"sku": sku_match.group(0).upper()})])
         if any(word in user for word in ("image", "photo", "图片", "照片", "找款", "相似")) and "search_similar_product_by_image" in tool_names:

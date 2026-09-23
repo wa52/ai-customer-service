@@ -18,6 +18,10 @@ const productSource = $('product_data_source');
 if (productSource && !Array.from(productSource.options).some((option) => option.value === 'postgres')) {
   productSource.add(new Option('公司 PostgreSQL', 'postgres'));
 }
+['pricing_data_source', 'knowledge_data_source', 'vision_data_source'].forEach((id) => {
+  const select = $(id);
+  if (select && !Array.from(select.options).some((option) => option.value === 'postgres')) select.add(new Option('PostgreSQL', 'postgres'));
+});
 providers.forEach(([value, name, desc]) => {
   const button = document.createElement('button');
   button.type = 'button'; button.className = 'provider-option'; button.dataset.provider = value;
