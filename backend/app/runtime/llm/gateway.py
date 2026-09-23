@@ -130,7 +130,7 @@ class DeterministicGateway(LLMGateway):
                 return LLMResponse(content="我们的不锈钢饰品默认使用 316L 材质，样品和生产细节可以由销售进一步确认。" if chinese else data["answer"])
             if "products" in data:
                 skus = ", ".join(str(item["sku"]) for item in data["products"])
-                return LLMResponse(content=f"模拟产品目录匹配到：{skus}。" if chinese else f"The mock catalog matched: {skus}.")
+                return LLMResponse(content=f"产品目录匹配到：{skus}。" if chinese else f"The product catalog matched: {skus}.")
         if "ring" in user and "search_products" in tool_names and any(word in user for word in ("need", "want", "looking")):
             return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", {"category": "ring"})])
         import re

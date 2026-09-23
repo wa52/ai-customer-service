@@ -63,14 +63,20 @@ class PostgresProductRepository:
         query = "SELECT sku, name, category, material, plating, color, size, style, gender, stone, moq, reference_price, currency, image_url, source_url, source_name, data_kind, is_external_reference FROM products WHERE " + " AND ".join(clauses) + " ORDER BY sku LIMIT 100"
         with self._connect() as connection, connection.cursor() as cursor:
             cursor.execute(query, values)
-            return [dict(row) for row in cursor.fetchall()]
+            return [self._normalize(dict(row)) for row in cursor.fetchall()]
 
     def get(self, sku: str) -> dict[str, object] | None:
         query = "SELECT sku, name, category, material, plating, color, size, style, gender, stone, moq, reference_price, currency, image_url, source_url, source_name, data_kind, is_external_reference FROM products WHERE upper(sku) = upper(%s)"
         with self._connect() as connection, connection.cursor() as cursor:
             cursor.execute(query, [sku])
             row = cursor.fetchone()
-            return dict(row) if row else None
+            return self._normalize(dict(row)) if row else None
+
+    @staticmethod
+    def _normalize(row: dict[str, object]) -> dict[str, object]:
+        if row.get("reference_price") is not None:
+            row["reference_price"] = float(row["reference_price"])
+        return row
 
     def _connect(self):
         import psycopg
