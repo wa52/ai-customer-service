@@ -29,4 +29,4 @@ def test_admin_config_never_exposes_api_key() -> None:
 def test_admin_page_is_available() -> None:
     response = TestClient(app).get("/admin")
     assert response.status_code == 200
-    assert "让云端模型接管客服对话" in response.text
+    assert "连接你的云端大脑" in response.text

@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.api.chat import router as chat_router
@@ -20,6 +21,7 @@ app.include_router(session_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(upload_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
+app.mount("/admin", StaticFiles(directory=Path(__file__).parent / "static" / "admin"), name="admin-static")
 
 
 @app.get("/health", tags=["system"])

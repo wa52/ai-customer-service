@@ -2,6 +2,31 @@ const $ = (id) => document.getElementById(id);
 const form = $('config-form');
 const temp = $('llm_temperature');
 const notice = $('notice');
+const providers = [
+  ['deepseek', 'DeepSeek', '深度求索', 'https://api.deepseek.com/v1', 'deepseek-chat'],
+  ['openai', 'OpenAI', 'GPT 系列', 'https://api.openai.com/v1', 'gpt-4o-mini'],
+  ['anthropic', 'Anthropic', 'Claude 系列', 'https://api.anthropic.com/v1', 'claude-3-5-sonnet-latest'],
+  ['gemini', 'Google Gemini', 'Gemini 系列', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-2.0-flash'],
+  ['qwen', '通义千问', '阿里云百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-plus'],
+  ['zhipu', '智谱 GLM', 'GLM 系列', 'https://open.bigmodel.cn/api/paas/v4', 'glm-4-flash'],
+  ['moonshot', '月之暗面', 'Kimi 系列', 'https://api.moonshot.cn/v1', 'moonshot-v1-8k'],
+  ['minimax', 'MiniMax', 'MiniMax 系列', 'https://api.minimax.chat/v1', 'MiniMax-Text-01'],
+  ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', ''],
+];
+const picker = $('provider-picker');
+providers.forEach(([value, name, desc]) => {
+  const button = document.createElement('button');
+  button.type = 'button'; button.className = 'provider-option'; button.dataset.provider = value;
+  button.innerHTML = `<b>${name.slice(0, 2)}</b><span>${name}<small>${desc}</small></span>`;
+  button.addEventListener('click', () => selectProvider(value, button));
+  picker.appendChild(button);
+});
+function selectProvider(value, button) {
+  const preset = providers.find((item) => item[0] === value);
+  $('llm_provider').value = value;
+  document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item === button));
+  if (preset && preset[3]) { $('llm_base_url').value = preset[3]; $('llm_model').value = preset[4]; }
+}
 
 function render(data) {
   $('llm_provider').value = data.llm_provider || 'openai_compatible';
@@ -10,12 +35,14 @@ function render(data) {
   temp.value = data.llm_temperature ?? 0.3;
   $('temperature-value').value = temp.value;
   $('product_capability_enabled').checked = Boolean(data.product_capability_enabled);
-  $('status-title').textContent = data.configured ? '模型已连接' : '等待配置模型';
+  document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item.dataset.provider === data.llm_provider));
+  $('status-title').textContent = data.configured ? '模型已连接' : '等待连接';
   $('status-subtitle').textContent = data.configured ? `${data.llm_provider} · 可开始对话` : '填写云端模型信息后即可使用';
+  $('fact-provider').textContent = data.llm_provider || '—';
   $('fact-model').textContent = data.llm_model || '未设置';
   $('fact-key').textContent = data.api_key_set ? (data.api_key_masked || '已设置') : '未设置';
-  $('fact-memory').textContent = data.memory_provider || 'memory';
-  $('status-dot').style.background = data.configured ? '#59ca99' : '#efb45f';
+  $('connection-badge').textContent = data.configured ? '已连接' : '未连接';
+  $('connection-badge').classList.toggle('connected', data.configured);
 }
 
 temp.addEventListener('input', () => { $('temperature-value').value = temp.value; });
