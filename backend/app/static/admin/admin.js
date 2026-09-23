@@ -41,16 +41,18 @@ function selectProvider(value, button, current = '') {
 }
 
 function render(data) {
-  $('llm_provider').value = data.llm_provider || 'openai_compatible';
-  $('llm_base_url').value = data.llm_base_url || '';
-  $('llm_base_url').readOnly = data.llm_provider !== 'openai_compatible';
-  $('llm_base_url').classList.toggle('official-url', data.llm_provider !== 'openai_compatible');
-  const provider = providers.find((item) => item[0] === data.llm_provider) || providers.at(-1);
-  updateModels(provider[4], data.llm_model || '');
+  const activeProvider = data.configured ? data.llm_provider : 'deepseek';
+  const provider = providers.find((item) => item[0] === activeProvider) || providers[0];
+  const activeModel = data.configured ? data.llm_model : provider[4][0];
+  $('llm_provider').value = activeProvider;
+  $('llm_base_url').value = data.configured ? data.llm_base_url : provider[3];
+  $('llm_base_url').readOnly = activeProvider !== 'openai_compatible';
+  $('llm_base_url').classList.toggle('official-url', activeProvider !== 'openai_compatible');
+  updateModels(provider[4], activeModel);
   temp.value = data.llm_temperature ?? 0.3;
   $('temperature-value').value = temp.value;
   $('product_capability_enabled').checked = Boolean(data.product_capability_enabled);
-  document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item.dataset.provider === data.llm_provider));
+  document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item.dataset.provider === activeProvider));
   $('status-title').textContent = data.configured ? '模型已连接' : '等待连接';
   $('status-subtitle').textContent = data.configured ? `${data.llm_provider} · 可开始对话` : '填写云端模型信息后即可使用';
   $('fact-provider').textContent = data.llm_provider || '—';
