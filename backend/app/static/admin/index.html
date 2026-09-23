@@ -21,7 +21,6 @@
           <div id="provider-picker" class="provider-picker"></div>
           <input id="llm_provider" type="hidden" value="openai_compatible" />
           <label>Base URL<input id="llm_base_url" type="url" placeholder="https://api.deepseek.com/v1" required /></label>
-          <label>Model<input id="llm_model" placeholder="deepseek-v4-flash" required /></label>
           <label>API Key <span class="label-hint">从供应商控制台创建</span><div class="key-row"><input id="llm_api_key" type="password" placeholder="粘贴你的 API Key" autocomplete="new-password" /><button type="button" id="toggle-key" class="ghost">显示</button></div></label>
           <div class="two-col"><label>Base URL<input id="llm_base_url" type="url" placeholder="https://api.deepseek.com/v1" required /></label><label>模型名称<select id="llm_model" required></select></label></div>
           <details><summary>高级设置 <span>Temperature、产品工具</span></summary><label>Temperature<div class="range-row"><input id="llm_temperature" type="range" min="0" max="2" step="0.1" /><output id="temperature-value">0.3</output></div></label><label class="switch-label"><input id="product_capability_enabled" type="checkbox" /><span class="switch"></span>启用产品目录工具</label></details>
