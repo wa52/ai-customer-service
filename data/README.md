@@ -15,4 +15,4 @@ Every imported record must keep `source_name`, `source_url`, `retrieved_at`, and
 
 Replace these files with company exports later; Runtime and ToolRegistry should not need to change.
 
-The current seed package contains 1000 synthetic product records, 1000 synthetic reference-price records, 200 synthetic material/process/compliance/care records, 100 synthetic FAQ records, 75 synthetic MOQ/procurement records, and 6157 synthetic vision metadata records. These make the Phase 2–4 flows testable without claiming that synthetic rows are company inventory or public-market facts. `data_kind=synthetic_demo` and `is_external_reference=false` identify them.
+The current package uses source-backed records only: the Jewena merchant feed supplies the product and public-price rows, Outokumpu and Jewena pages supply knowledge records, and the Hugging Face dataset supplies 6,156 downloaded image files and metadata. The image archive is intentionally ignored by Git because it is about 405 MB; `scripts/import_real_vision_metadata.py` indexes the local download. The first vision search is metadata keyword matching; embeddings can be added later without replacing the source data.

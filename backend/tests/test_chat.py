@@ -81,8 +81,8 @@ def test_public_seed_capabilities_keep_external_provenance() -> None:
     products = public.execute("search_products", {"category": "ring"}, memory_store.get_state(client.post("/api/v1/chat/sessions").json()["id"]))
     assert products.success is True
     assert products.sources == ["public_product_catalog"]
-    assert products.data["products"][0]["data_kind"] == "synthetic_demo"
-    assert products.data["products"][0]["is_external_reference"] is False
+    assert products.data["products"][0]["data_kind"] == "external_reference"
+    assert products.data["products"][0]["is_external_reference"] is True
     price = public.execute("get_product_price", {"sku": "unknown"}, memory_store.get_state(client.post("/api/v1/chat/sessions").json()["id"]))
     assert price.success is False
     assert price.error["code"] == "PRICE_NOT_FOUND"

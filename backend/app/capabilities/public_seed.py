@@ -104,8 +104,23 @@ class PublicKnowledgeCapability:
 
 
 class PublicVisionCapability:
+    def __init__(self) -> None:
+        self.rows: list[dict[str, str]] = []
+        path = DATA_ROOT / "vision" / "image_metadata.csv"
+        if path.exists():
+            with path.open(newline="", encoding="utf-8-sig", errors="replace") as handle:
+                self.rows = list(csv.DictReader(handle))
+
     def search(self, description: str) -> CapabilityResult:
-        return CapabilityResult(success=True, data={"matches": [], "description": description, "mode": "public_seed", "note": "Public image metadata is prepared; image embeddings are not indexed yet."}, confidence=0.2, sources=["public_vision_metadata"])
+        terms = {term.lower() for term in description.split() if len(term) > 2}
+        matches = []
+        for row in self.rows:
+            haystack = f"{row.get('category', '')} {row.get('description', '')}".lower()
+            score = sum(term in haystack for term in terms)
+            if score:
+                matches.append({"image_id": row.get("image_id", ""), "category": row.get("category", ""), "image_path": row.get("image_path", ""), "description": row.get("description", ""), "similarity": round(score / max(len(terms), 1), 2), "source_url": row.get("source_url", ""), "is_external_reference": True})
+        matches.sort(key=lambda item: item["similarity"], reverse=True)
+        return CapabilityResult(success=True, data={"matches": matches[:10], "description": description, "mode": "public_seed", "note": "Metadata keyword matching is active; vector embedding search is a later optimization."}, confidence=0.45 if matches else 0.1, sources=["public_vision_metadata"])
 
     def search_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:
         return self.search(str(arguments.get("description", "")))
