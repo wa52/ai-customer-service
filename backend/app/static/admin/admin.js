@@ -3,15 +3,15 @@ const form = $('config-form');
 const temp = $('llm_temperature');
 const notice = $('notice');
 const providers = [
-  ['deepseek', 'DeepSeek', 'V4 Flash', 'https://api.deepseek.com/v1', 'deepseek-v4-flash'],
-  ['openai', 'OpenAI', 'GPT-5.6 Luna', 'https://api.openai.com/v1', 'gpt-5.6-luna'],
-  ['anthropic', 'Anthropic', 'Claude Sonnet 4.6', 'https://api.anthropic.com/v1', 'claude-sonnet-4-6'],
-  ['gemini', 'Google Gemini', 'Gemini 3.8 Flash', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3.8-flash'],
-  ['qwen', '通义千问', 'Qwen3.8 Flash', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3.8-flash'],
-  ['zhipu', '智谱 GLM', 'GLM-5.3', 'https://open.bigmodel.cn/api/paas/v4', 'glm-5.3'],
-  ['moonshot', '月之暗面', 'Kimi K2.6', 'https://api.moonshot.cn/v1', 'kimi-k2.6'],
-  ['minimax', 'MiniMax', 'MiniMax M3', 'https://api.minimax.chat/v1', 'MiniMax-M3'],
-  ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', ''],
+  ['deepseek', 'DeepSeek', 'V4 系列', 'https://api.deepseek.com/v1', ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-flash-0731']],
+  ['openai', 'OpenAI', 'GPT 系列', 'https://api.openai.com/v1', ['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.5', 'gpt-4.1-mini']],
+  ['anthropic', 'Anthropic', 'Claude 系列', 'https://api.anthropic.com/v1', ['claude-sonnet-4-6', 'claude-opus-4-8', 'claude-haiku-4-5-20251001']],
+  ['gemini', 'Google Gemini', 'Gemini 系列', 'https://generativelanguage.googleapis.com/v1beta/openai', ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-pro-preview']],
+  ['qwen', '通义千问', 'Qwen 系列', 'https://dashscope.aliyuncs.com/compatible-mode/v1', ['qwen3.8-max', 'qwen3.8-flash', 'qwen3.7-plus', 'qwen3.7-flash', 'qwen3-coder-plus']],
+  ['zhipu', '智谱 GLM', 'GLM 系列', 'https://open.bigmodel.cn/api/paas/v4', ['glm-5.3', 'glm-5.2', 'glm-5.1', 'glm-5-turbo']],
+  ['moonshot', '月之暗面', 'Kimi 系列', 'https://api.moonshot.cn/v1', ['kimi-k2.6', 'kimi-k2.5', 'kimi-k3', 'kimi-k2.7-code']],
+  ['minimax', 'MiniMax', 'M 系列', 'https://api.minimax.chat/v1', ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5']],
+  ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', []],
 ];
 const picker = $('provider-picker');
 providers.forEach(([value, name, desc]) => {
@@ -21,17 +21,25 @@ providers.forEach(([value, name, desc]) => {
   button.addEventListener('click', () => selectProvider(value, button));
   picker.appendChild(button);
 });
-function selectProvider(value, button) {
+function updateModels(models, current = '') {
+  const select = $('llm_model');
+  select.innerHTML = '';
+  models.forEach((model) => select.add(new Option(model, model)));
+  if (current && !models.includes(current)) select.add(new Option(`${current}（当前配置）`, current));
+  if (current) select.value = current;
+}
+function selectProvider(value, button, current = '') {
   const preset = providers.find((item) => item[0] === value);
   $('llm_provider').value = value;
   document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item === button));
-  if (preset && preset[3]) { $('llm_base_url').value = preset[3]; $('llm_model').value = preset[4]; }
+  if (preset) { $('llm_base_url').value = preset[3]; updateModels(preset[4], current || preset[4][0] || ''); }
 }
 
 function render(data) {
   $('llm_provider').value = data.llm_provider || 'openai_compatible';
   $('llm_base_url').value = data.llm_base_url || '';
-  $('llm_model').value = data.llm_model || '';
+  const provider = providers.find((item) => item[0] === data.llm_provider) || providers.at(-1);
+  updateModels(provider[4], data.llm_model || '');
   temp.value = data.llm_temperature ?? 0.3;
   $('temperature-value').value = temp.value;
   $('product_capability_enabled').checked = Boolean(data.product_capability_enabled);
@@ -61,7 +69,7 @@ form.addEventListener('submit', async (event) => {
   event.preventDefault();
   notice.textContent = '正在保存…';
   const response = await fetch('/api/v1/admin/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({
-    llm_provider: $('llm_provider').value, llm_base_url: $('llm_base_url').value.trim(), llm_model: $('llm_model').value.trim(),
+    llm_provider: $('llm_provider').value, llm_base_url: $('llm_base_url').value.trim(), llm_model: $('llm_model').value,
     llm_api_key: $('llm_api_key').value, llm_temperature: Number(temp.value), product_capability_enabled: $('product_capability_enabled').checked
   })});
   if (!response.ok) { notice.textContent = '保存失败，请检查输入'; notice.style.color = '#c45d4b'; return; }
