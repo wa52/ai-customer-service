@@ -3,14 +3,14 @@ const form = $('config-form');
 const temp = $('llm_temperature');
 const notice = $('notice');
 const providers = [
-  ['deepseek', 'DeepSeek', '深度求索', 'https://api.deepseek.com/v1', 'deepseek-chat'],
-  ['openai', 'OpenAI', 'GPT 系列', 'https://api.openai.com/v1', 'gpt-4o-mini'],
-  ['anthropic', 'Anthropic', 'Claude 系列', 'https://api.anthropic.com/v1', 'claude-3-5-sonnet-latest'],
-  ['gemini', 'Google Gemini', 'Gemini 系列', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-2.0-flash'],
-  ['qwen', '通义千问', '阿里云百炼', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen-plus'],
-  ['zhipu', '智谱 GLM', 'GLM 系列', 'https://open.bigmodel.cn/api/paas/v4', 'glm-4-flash'],
-  ['moonshot', '月之暗面', 'Kimi 系列', 'https://api.moonshot.cn/v1', 'moonshot-v1-8k'],
-  ['minimax', 'MiniMax', 'MiniMax 系列', 'https://api.minimax.chat/v1', 'MiniMax-Text-01'],
+  ['deepseek', 'DeepSeek', 'V4 Flash', 'https://api.deepseek.com/v1', 'deepseek-v4-flash'],
+  ['openai', 'OpenAI', 'GPT-5.6 Luna', 'https://api.openai.com/v1', 'gpt-5.6-luna'],
+  ['anthropic', 'Anthropic', 'Claude Sonnet 4.6', 'https://api.anthropic.com/v1', 'claude-sonnet-4-6'],
+  ['gemini', 'Google Gemini', 'Gemini 3.8 Flash', 'https://generativelanguage.googleapis.com/v1beta/openai', 'gemini-3.8-flash'],
+  ['qwen', '通义千问', 'Qwen3.8 Flash', 'https://dashscope.aliyuncs.com/compatible-mode/v1', 'qwen3.8-flash'],
+  ['zhipu', '智谱 GLM', 'GLM-5.3', 'https://open.bigmodel.cn/api/paas/v4', 'glm-5.3'],
+  ['moonshot', '月之暗面', 'Kimi K2.6', 'https://api.moonshot.cn/v1', 'kimi-k2.6'],
+  ['minimax', 'MiniMax', 'MiniMax M3', 'https://api.minimax.chat/v1', 'MiniMax-M3'],
   ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', ''],
 ];
 const picker = $('provider-picker');
