@@ -3,7 +3,7 @@ const form = $('config-form');
 const temp = $('llm_temperature');
 const notice = $('notice');
 const providers = [
-  ['deepseek', 'DeepSeek', 'V4 系列', 'https://api.deepseek.com/v1', ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-v4-flash-0731']],
+  ['deepseek', 'DeepSeek', 'V4.1 Flash', 'https://api.deepseek.com', ['deepseek-flash', 'deepseek-v4-pro']],
   ['openai', 'OpenAI', 'GPT 系列', 'https://api.openai.com/v1', ['gpt-5.6-luna', 'gpt-5.6-terra', 'gpt-5.6-sol', 'gpt-5.5', 'gpt-4.1-mini']],
   ['anthropic', 'Anthropic', 'Claude 系列', 'https://api.anthropic.com/v1', ['claude-sonnet-4-6', 'claude-opus-4-8', 'claude-haiku-4-5-20251001']],
   ['gemini', 'Google Gemini', 'Gemini 系列', 'https://generativelanguage.googleapis.com/v1beta/openai', ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.6-flash', 'gemini-3.1-pro-preview']],
