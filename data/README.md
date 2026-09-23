@@ -15,4 +15,4 @@ Every imported record must keep `source_name`, `source_url`, `retrieved_at`, and
 
 Replace these files with company exports later; Runtime and ToolRegistry should not need to change.
 
-The current seed package also contains 120 synthetic product records, 120 synthetic reference-price records, 100 synthetic knowledge/FAQ records, and 200 synthetic vision metadata records. These make the Phase 2–4 flows testable without claiming that synthetic rows are company inventory or public-market facts. `data_kind=synthetic_demo` and `is_external_reference=false` identify them.
+The current seed package contains 1000 synthetic product records, 1000 synthetic reference-price records, 200 synthetic material/process/compliance/care records, 100 synthetic FAQ records, 75 synthetic MOQ/procurement records, and 6157 synthetic vision metadata records. These make the Phase 2–4 flows testable without claiming that synthetic rows are company inventory or public-market facts. `data_kind=synthetic_demo` and `is_external_reference=false` identify them.

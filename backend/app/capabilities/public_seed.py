@@ -89,7 +89,7 @@ def _load_jsonl(filename: str) -> list[dict[str, Any]]:
 
 class PublicKnowledgeCapability:
     def __init__(self) -> None:
-        self.entries = _load_jsonl("materials.jsonl") + _load_jsonl("compliance.jsonl") + _load_jsonl("faq.jsonl")
+        self.entries = [entry for path in sorted((DATA_ROOT / "knowledge").glob("*.jsonl")) for entry in _load_jsonl(path.name)]
 
     def answer(self, question: str) -> CapabilityResult:
         terms = {term.lower() for term in question.split() if len(term) > 2}
