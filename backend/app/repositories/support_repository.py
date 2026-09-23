@@ -55,9 +55,22 @@ class PostgresKnowledgeCapability:
 class PostgresVisionCapability:
     def __init__(self, database_url: str) -> None:
         self.database_url = database_url
+        self._embedder = None
 
     def search(self, description: str) -> CapabilityResult:
         import psycopg
+
+        try:
+            from app.vision.clip_embeddings import ClipEmbedder
+
+            if self._embedder is None:
+                self._embedder = ClipEmbedder()
+            embedding = self._embedder.text(description)
+            with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
+                rows = connection.execute("SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference, 1 - (embedding <=> %s::vector) AS similarity FROM vision_metadata WHERE embedding IS NOT NULL ORDER BY embedding <=> %s::vector LIMIT 10", [str(embedding), str(embedding)]).fetchall()
+            return CapabilityResult(success=True, data={"matches": [dict(row) for row in rows], "description": description, "mode": "pgvector", "note": "CLIP text-to-image vector search."}, confidence=0.8 if rows else 0.2, sources=["postgres_pgvector_vision"])
+        except (ImportError, ModuleNotFoundError, FileNotFoundError):
+            pass
 
         terms = [term for term in description.split() if len(term) > 2][:8] or [description]
         patterns = [f"%{term}%" for term in terms]
