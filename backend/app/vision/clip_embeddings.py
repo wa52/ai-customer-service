@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 
 class ClipEmbedder:
@@ -6,6 +7,7 @@ class ClipEmbedder:
 
     def __init__(self, model_name: str = "openai/clip-vit-base-patch32") -> None:
         self.model_name = model_name
+        self.revision = os.getenv("VISION_MODEL_REVISION", "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268")
         self._processor = None
         self._model = None
 
@@ -15,8 +17,8 @@ class ClipEmbedder:
         import torch
         from transformers import CLIPModel, CLIPProcessor
 
-        self._processor = CLIPProcessor.from_pretrained(self.model_name)
-        self._model = CLIPModel.from_pretrained(self.model_name)
+        self._processor = CLIPProcessor.from_pretrained(self.model_name, revision=self.revision, local_files_only=True)
+        self._model = CLIPModel.from_pretrained(self.model_name, revision=self.revision, local_files_only=True)
         self._model.eval()
         self._torch = torch
 

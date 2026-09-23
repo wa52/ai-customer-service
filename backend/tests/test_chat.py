@@ -9,9 +9,11 @@ from app.config.settings import Settings
 from app.customer_service.runtime import CustomerServiceRuntime
 from app.main import app
 from app.runtime.llm.gateway import LLMResponse, StreamEvent, ToolCall
+from app.schemas.runtime import CapabilityResult
 from app.services.memory import memory_store
 from app.services.memory import detect_language
 import app.api.chat as chat_api
+import app.api.upload as upload_api
 
 
 class FakeGateway:
@@ -124,3 +126,31 @@ def test_customer_language_is_detected_and_added_to_model_context() -> None:
     assert detect_language("我想找黑色戒指") == "zh"
     assert stored is not None and stored.language == "zh"
     assert "same language" in str(memory_store.build_llm_messages(session["id"])[0]["content"])
+
+
+def test_upload_image_runs_vision_capability(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeVision:
+        def search_image_bytes(self, content: bytes, filename: str) -> CapabilityResult:
+            assert content.startswith(b"fake-image")
+            assert filename == "reference.jpg"
+            return CapabilityResult(
+                success=True,
+                data={"matches": [{"image_id": "HF-JEWELRY-0001"}], "mode": "pgvector"},
+                sources=["postgres_pgvector_vision"],
+            )
+
+    class RuntimeStub:
+        class Executor:
+            vision = FakeVision()
+
+        executor = Executor()
+
+    monkeypatch.setattr(upload_api, "customer_service_runtime", RuntimeStub())
+    session = client.post("/api/v1/chat/sessions").json()
+    response = client.post(
+        "/api/v1/chat/upload-image",
+        data={"session_id": session["id"]},
+        files={"image": ("reference.jpg", b"fake-image-bytes", "image/jpeg")},
+    )
+    assert response.status_code == 200
+    assert response.json()["data"]["matches"][0]["image_id"] == "HF-JEWELRY-0001"

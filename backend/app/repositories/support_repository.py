@@ -1,5 +1,7 @@
 import csv
 import json
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -66,9 +68,7 @@ class PostgresVisionCapability:
             if self._embedder is None:
                 self._embedder = ClipEmbedder()
             embedding = self._embedder.text(description)
-            with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
-                rows = connection.execute("SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference, 1 - (embedding <=> %s::vector) AS similarity FROM vision_metadata WHERE embedding IS NOT NULL ORDER BY embedding <=> %s::vector LIMIT 10", [str(embedding), str(embedding)]).fetchall()
-            return CapabilityResult(success=True, data={"matches": [dict(row) for row in rows], "description": description, "mode": "pgvector", "note": "CLIP text-to-image vector search."}, confidence=0.8 if rows else 0.2, sources=["postgres_pgvector_vision"])
+            return self._search_embedding(embedding, description, "CLIP text-to-image vector search.")
         except (ImportError, ModuleNotFoundError, FileNotFoundError):
             pass
 
@@ -79,6 +79,38 @@ class PostgresVisionCapability:
         with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
             rows = connection.execute(f"SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference FROM vision_metadata WHERE {predicates} LIMIT 10", values).fetchall()
         return CapabilityResult(success=True, data={"matches": [dict(row) for row in rows], "description": description, "mode": "postgres_metadata", "note": "PostgreSQL metadata search is active; vector embedding search is a later optimization."}, confidence=0.45 if rows else 0.1, sources=["postgres_vision_metadata"])
+
+    def search_image_bytes(self, content: bytes, filename: str = "upload.jpg") -> CapabilityResult:
+        """Search catalog images using an uploaded customer image."""
+        from app.vision.clip_embeddings import ClipEmbedder
+
+        if self._embedder is None:
+            self._embedder = ClipEmbedder()
+        suffix = Path(filename).suffix.lower() or ".jpg"
+        descriptor, temporary_path = tempfile.mkstemp(suffix=suffix)
+        try:
+            with os.fdopen(descriptor, "wb") as temporary:
+                temporary.write(content)
+            embedding = self._embedder.image(Path(temporary_path))
+        finally:
+            Path(temporary_path).unlink(missing_ok=True)
+        return self._search_embedding(embedding, "uploaded customer image", "CLIP image-to-image vector search.")
+
+    def _search_embedding(self, embedding: list[float], query: str, note: str) -> CapabilityResult:
+        import psycopg
+
+        vector = str(embedding)
+        with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
+            rows = connection.execute(
+                "SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference, 1 - (embedding <=> %s::vector) AS similarity FROM vision_metadata WHERE embedding IS NOT NULL ORDER BY embedding <=> %s::vector LIMIT 10",
+                [vector, vector],
+            ).fetchall()
+        return CapabilityResult(
+            success=True,
+            data={"matches": [dict(row) for row in rows], "description": query, "mode": "pgvector", "note": note},
+            confidence=0.85 if rows else 0.2,
+            sources=["postgres_pgvector_vision"],
+        )
 
     def search_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:
         return self.search(str(arguments.get("description", "")))
