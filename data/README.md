@@ -14,3 +14,5 @@ Every imported record must keep `source_name`, `source_url`, `retrieved_at`, and
 - `sources/sources.json`: source registry and usage notes
 
 Replace these files with company exports later; Runtime and ToolRegistry should not need to change.
+
+The current seed package also contains 120 synthetic product records, 120 synthetic reference-price records, 100 synthetic knowledge/FAQ records, and 200 synthetic vision metadata records. These make the Phase 2–4 flows testable without claiming that synthetic rows are company inventory or public-market facts. `data_kind=synthetic_demo` and `is_external_reference=false` identify them.

@@ -39,7 +39,8 @@ def load_public_products() -> list[dict[str, object]]:
                     "image_url": row.get("image_url", ""),
                     "source_url": row.get("source_url", ""),
                     "source_name": _source_name(row, "public_seed"),
-                    "is_external_reference": True,
+                    "data_kind": row.get("data_kind", "external_reference"),
+                    "is_external_reference": row.get("is_external_reference", "true").lower() == "true",
                 }
             )
         return rows
@@ -63,6 +64,8 @@ class PublicPricingCapability:
                             "currency": row.get("currency") or "USD",
                             "source_name": _source_name(row, "public_seed"),
                             "source_url": row.get("source_url", ""),
+                            "data_kind": row.get("data_kind", "external_reference"),
+                            "is_external_reference": row.get("is_external_reference", "true").lower() == "true",
                         }
 
     def quote(self, sku: str, quantity: int | None = None) -> CapabilityResult:
@@ -86,7 +89,7 @@ def _load_jsonl(filename: str) -> list[dict[str, Any]]:
 
 class PublicKnowledgeCapability:
     def __init__(self) -> None:
-        self.entries = _load_jsonl("materials.jsonl") + _load_jsonl("compliance.jsonl")
+        self.entries = _load_jsonl("materials.jsonl") + _load_jsonl("compliance.jsonl") + _load_jsonl("faq.jsonl")
 
     def answer(self, question: str) -> CapabilityResult:
         terms = {term.lower() for term in question.split() if len(term) > 2}
