@@ -34,7 +34,7 @@ class FakeGateway:
 @pytest.fixture(autouse=True)
 def isolated_runtime(monkeypatch: pytest.MonkeyPatch):
     fake = FakeGateway()
-    runtime = CustomerServiceRuntime(fake, ActionExecutor(Settings(product_capability_enabled=True)))
+    runtime = CustomerServiceRuntime(fake, ActionExecutor(Settings(product_capability_enabled=True, product_data_source="mock", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")))
     monkeypatch.setattr(chat_api, "customer_service_runtime", runtime)
     yield fake
 
@@ -60,7 +60,7 @@ def test_tool_configuration_controls_registry() -> None:
 
 
 def test_mock_capabilities_return_structured_results() -> None:
-    executor = ActionExecutor(Settings())
+    executor = ActionExecutor(Settings(product_data_source="mock", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock"))
     session = client.post("/api/v1/chat/sessions").json()
     state = memory_store.get_state(session["id"])
     assert executor.execute("get_product_price", {"sku": "R1001", "quantity": 100}, state).data["unit_price"] == 2.8

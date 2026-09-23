@@ -14,6 +14,10 @@ const providers = [
   ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', []],
 ];
 const picker = $('provider-picker');
+const productSource = $('product_data_source');
+if (productSource && !Array.from(productSource.options).some((option) => option.value === 'postgres')) {
+  productSource.add(new Option('公司 PostgreSQL', 'postgres'));
+}
 providers.forEach(([value, name, desc]) => {
   const button = document.createElement('button');
   button.type = 'button'; button.className = 'provider-option'; button.dataset.provider = value;

@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from app.capabilities.product import ProductCapability
+from app.repositories.product_repository import CsvProductRepository
 from app.schemas.runtime import CapabilityResult
 
 
@@ -48,7 +49,7 @@ def load_public_products() -> list[dict[str, object]]:
 
 class PublicProductCapability(ProductCapability):
     def __init__(self) -> None:
-        super().__init__(load_public_products(), source="public_product_catalog")
+        super().__init__(source="public_product_catalog", repository=CsvProductRepository(DATA_ROOT / "products" / "products_public.csv"))
 
 
 class PublicPricingCapability:

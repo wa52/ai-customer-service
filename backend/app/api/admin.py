@@ -18,15 +18,15 @@ class AdminConfigRequest(BaseModel):
     llm_model: str = Field(default="", max_length=200)
     llm_temperature: float = Field(default=0.3, ge=0, le=2)
     product_capability_enabled: bool = True
-    product_data_source: str = "mock"
+    product_data_source: str = "public_seed"
     pricing_capability_enabled: bool = True
-    pricing_data_source: str = "mock"
+    pricing_data_source: str = "public_seed"
     pricing_base_url: str = ""
     knowledge_capability_enabled: bool = True
-    knowledge_data_source: str = "mock"
+    knowledge_data_source: str = "public_seed"
     knowledge_base_url: str = ""
     vision_capability_enabled: bool = True
-    vision_data_source: str = "mock"
+    vision_data_source: str = "public_seed"
     vision_base_url: str = ""
 
 

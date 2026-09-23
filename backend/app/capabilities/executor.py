@@ -3,6 +3,8 @@ from app.runtime.tool_calling.registry import ToolRegistry
 from app.capabilities.product import ProductCapability
 from app.capabilities.mock_services import MockKnowledgeCapability, MockPricingCapability, MockVisionCapability
 from app.capabilities.public_seed import PublicKnowledgeCapability, PublicPricingCapability, PublicProductCapability, PublicVisionCapability
+from app.repositories.product_capability import RepositoryProductCapability
+from app.repositories.product_repository import PostgresProductRepository
 from app.config.settings import Settings, get_settings
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,7 +48,7 @@ class ActionExecutor:
     def __init__(self, settings: Settings | None = None) -> None:
         settings = settings or get_settings()
         self.registry = ToolRegistry()
-        self.product = PublicProductCapability() if settings.product_data_source == "public_seed" else ProductCapability()
+        self.product = PublicProductCapability() if settings.product_data_source == "public_seed" else RepositoryProductCapability(PostgresProductRepository(settings.database_url), "postgres_product_catalog") if settings.product_data_source == "postgres" else ProductCapability()
         self.pricing = PublicPricingCapability() if settings.pricing_data_source == "public_seed" else MockPricingCapability()
         self.knowledge = PublicKnowledgeCapability() if settings.knowledge_data_source == "public_seed" else MockKnowledgeCapability()
         self.vision = PublicVisionCapability() if settings.vision_data_source == "public_seed" else MockVisionCapability()
