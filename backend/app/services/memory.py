@@ -42,22 +42,37 @@ class InMemoryMemoryStore:
     def create_session(self) -> SessionResponse:
         session = Session(id=f"S-{uuid4().hex[:10].upper()}")
         self._sessions[session.id] = session
+        self._save(session)
         return self._response(session)
 
     def get_session(self, session_id: str) -> SessionResponse | None:
-        session = self._sessions.get(session_id)
+        session = self._sessions.get(session_id) or self._load(session_id)
+        if session is not None:
+            self._sessions[session.id] = session
         return self._response(session) if session else None
 
     def get_state(self, session_id: str) -> ConversationState:
-        return self._sessions[session_id].state
+        session = self._sessions.get(session_id) or self._load(session_id)
+        if session is None:
+            raise KeyError(session_id)
+        self._sessions[session.id] = session
+        return session.state
 
     def append(self, session_id: str, role: str, content: str, action: str | None = None, intent: str | None = None) -> MessageResponse:
         message = MessageResponse(id=f"M-{uuid4().hex[:10]}", role=role, content=content, created_at=datetime.now(timezone.utc), action=action, intent=intent)
         self._sessions[session_id].messages.append(message)
+        self._save(self._sessions[session_id])
         return message
 
     def set_status(self, session_id: str, status: str) -> None:
         self._sessions[session_id].status = status
+        self._save(self._sessions[session_id])
+
+    def _save(self, _session: Session) -> None:
+        return None
+
+    def _load(self, _session_id: str) -> Session | None:
+        return None
 
     def build_llm_messages(self, session_id: str) -> list[dict[str, object]]:
         session = self._sessions[session_id]
@@ -69,7 +84,8 @@ class InMemoryMemoryStore:
             f"Current session context: {json.dumps(state, ensure_ascii=False)}"
         )
         messages: list[dict[str, object]] = [{"role": "system", "content": system}]
-        messages.extend({"role": message.role, "content": message.content} for message in session.messages[-12:])
+        role_mapping = {"customer": "user", "assistant": "assistant", "system": "system"}
+        messages.extend({"role": role_mapping.get(message.role, "user"), "content": message.content} for message in session.messages[-12:])
         return messages
 
     def latest_assistant(self, session_id: str) -> MessageResponse | None:
@@ -83,4 +99,19 @@ class InMemoryMemoryStore:
         return SessionResponse(id=session.id, status=session.status, language=session.language, summary=session.summary, requirements=session.state.requirements, candidate_products=session.state.candidate_products, selected_product=session.state.selected_product, missing_information=session.state.missing_information, messages=session.messages)
 
 
-memory_store = InMemoryMemoryStore()
+def create_memory_store():
+    from app.config.settings import get_settings
+
+    settings = get_settings()
+    if settings.memory_provider == "redis":
+        from app.services.persistent_memory import RedisMemoryStore
+
+        return RedisMemoryStore(settings.redis_url)
+    if settings.memory_provider == "postgres":
+        from app.services.persistent_memory import PostgresMemoryStore
+
+        return PostgresMemoryStore(settings.database_url)
+    return InMemoryMemoryStore()
+
+
+memory_store = create_memory_store()

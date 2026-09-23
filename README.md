@@ -12,7 +12,8 @@
 - `CustomerServiceRuntime → LLMGateway → ToolRegistry → Capability → LLM` 主链路
 - GPT / DeepSeek OpenAI-compatible Chat Completions、原生 Tool Calling、真实模型 SSE 流式转发
 - 未配置模型时仅使用明确标注的本地 fallback；生产配置见 `.env.example`
-- 当前 Session 使用内存实现，后续可替换 PostgreSQL、Redis、Vision/RAG/Pricing Capability
+- Session 默认使用内存实现，也可通过 `MEMORY_PROVIDER=redis|postgres` 切换持久化后端
+- Vision/RAG/Pricing 仍属于后续 Phase
 
 ## 启动后端
 

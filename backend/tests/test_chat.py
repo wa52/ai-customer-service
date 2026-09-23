@@ -48,11 +48,20 @@ def test_native_tool_calling_executes_product_tool(isolated_runtime: FakeGateway
     assert response.json()["session"]["candidate_products"] == ["R1001", "R1002", "R1003"]
     assert "search_products" in {tool["function"]["name"] for tool in isolated_runtime.calls[0][1]}
     assert isolated_runtime.calls[1][0][-1]["role"] == "tool"
+    assert isolated_runtime.calls[0][0][-1]["role"] == "user"
 
 
 def test_tool_configuration_controls_registry() -> None:
     assert {tool["function"]["name"] for tool in ActionExecutor(Settings(product_capability_enabled=False)).definitions()} == {"request_human_handoff"}
     assert len(ActionExecutor(Settings(product_capability_enabled=True)).definitions()) == 3
+
+
+def test_invalid_tool_arguments_are_returned_as_structured_error() -> None:
+    executor = ActionExecutor(Settings(product_capability_enabled=True))
+    result = executor.execute("get_product_information", {"sku": ""}, memory_store.get_state(client.post("/api/v1/chat/sessions").json()["id"]))
+    assert result.success is False
+    assert result.error is not None
+    assert result.error["code"] == "INVALID_ARGUMENTS"
 
 
 def test_streaming_forwards_gateway_chunks() -> None:

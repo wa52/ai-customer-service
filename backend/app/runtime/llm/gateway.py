@@ -91,8 +91,16 @@ class LLMGateway:
     @staticmethod
     def _parse_response(payload: dict[str, Any]) -> LLMResponse:
         message = payload["choices"][0]["message"]
-        calls = [ToolCall(id=item["id"], name=item["function"]["name"], arguments=json.loads(item["function"].get("arguments", "{}"))) for item in message.get("tool_calls", [])]
+        calls = [ToolCall(id=item["id"], name=item["function"]["name"], arguments=LLMGateway._parse_arguments(item["function"].get("arguments", "{}"))) for item in message.get("tool_calls", [])]
         return LLMResponse(content=message.get("content") or "", tool_calls=calls)
+
+    @staticmethod
+    def _parse_arguments(raw: str) -> dict[str, Any]:
+        try:
+            parsed = json.loads(raw or "{}")
+        except json.JSONDecodeError:
+            return {"_invalid_json": raw}
+        return parsed if isinstance(parsed, dict) else {"_invalid_arguments": parsed}
 
 
 class DeterministicGateway(LLMGateway):

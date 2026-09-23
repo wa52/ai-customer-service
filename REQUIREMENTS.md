@@ -3082,3 +3082,34 @@ Customer Service Runtime
 ```
 
 底层所有 AI 技术都只能作为这一客服流程的支撑能力。
+
+---
+
+# 64. Phase 1 收尾实现基线
+
+当前实现以模型原生能力为主，正式运行链路为：
+
+```text
+CustomerServiceRuntime
+        ↓
+LLMGateway（GPT / DeepSeek OpenAI-compatible）
+        ↓
+Native Tool Calling
+        ↓
+ToolRegistry（Pydantic 参数校验）
+        ↓
+Capability
+        ↓
+Tool Result 回传模型
+        ↓
+真实模型流式回复
+```
+
+工程约束：
+
+- 业务消息 `customer` 在发送给模型前必须映射为标准角色 `user`。
+- Tool 参数必须经过 Pydantic schema 校验；非法参数只能生成结构化错误结果，不得执行后端能力。
+- Tool Result 中的候选产品、当前产品和人工接管状态必须同步到 Session Memory。
+- `LLM_BASE_URL`、`LLM_API_KEY`、`LLM_MODEL` 配置完整时，使用真实 GPT/DeepSeek API；未配置时只允许使用本地 fallback。
+- `MEMORY_PROVIDER=memory|redis|postgres` 控制 Session 存储后端，Redis/PostgreSQL 适配器不得改变 Runtime 接口。
+- Phase 2 开始前，不引入 Vision Search、Knowledge/RAG 或 Pricing 业务能力。
