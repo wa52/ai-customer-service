@@ -13,6 +13,10 @@ const providers = [
   ['minimax', 'MiniMax', 'M 系列', 'https://api.minimax.chat/v1', ['MiniMax-M3', 'MiniMax-M2.7', 'MiniMax-M2.5']],
   ['openai_compatible', '自定义接口', 'OpenAI 兼容', '', []],
 ];
+const modelLabels = {
+  'deepseek-flash': 'DeepSeek V4.1 Flash（API ID: deepseek-flash）',
+  'deepseek-v4-pro': 'DeepSeek V4 Pro（API ID: deepseek-v4-pro）',
+};
 const picker = $('provider-picker');
 const productSource = $('product_data_source');
 if (productSource && !Array.from(productSource.options).some((option) => option.value === 'postgres')) {
@@ -32,7 +36,7 @@ providers.forEach(([value, name, desc]) => {
 function updateModels(models, current = '') {
   const select = $('llm_model');
   select.innerHTML = '';
-  models.forEach((model) => select.add(new Option(model, model)));
+  models.forEach((model) => select.add(new Option(modelLabels[model] || model, model)));
   if (current && !models.includes(current)) select.add(new Option(`${current}（当前配置）`, current));
   if (current) select.value = current;
 }
@@ -69,12 +73,13 @@ function render(data) {
   $('vision_data_source').value = data.capabilities?.vision?.source ?? 'mock';
   document.querySelectorAll('.provider-option').forEach((item) => item.classList.toggle('active', item.dataset.provider === activeProvider));
   $('status-title').textContent = data.configured ? '模型已连接' : '等待连接';
-  $('status-subtitle').textContent = data.configured ? `${data.llm_provider} · 可开始对话` : '填写云端模型信息后即可使用';
+  $('status-subtitle').textContent = data.configured ? `${data.llm_provider} · 可开始对话` : '模型未连接；产品目录可用基础问答，配置 Key 后启用 AI';
   $('fact-provider').textContent = data.llm_provider || '—';
-  $('fact-model').textContent = data.llm_model || '未设置';
+  $('fact-model').textContent = modelLabels[data.llm_model] || data.llm_model || '未设置';
   $('fact-key').textContent = data.api_key_set ? (data.api_key_masked || '已设置') : '未设置';
   $('connection-badge').textContent = data.configured ? '已连接' : '未连接';
   $('connection-badge').classList.toggle('connected', data.configured);
+  $('storage-note').textContent = data.storage_note || '';
 }
 
 temp.addEventListener('input', () => { $('temperature-value').value = temp.value; });

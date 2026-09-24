@@ -51,7 +51,8 @@ class LLMGateway:
             return
         payload = self._payload(messages, tools, stream=True)
         tool_buffers: dict[int, dict[str, Any]] = {}
-        async with httpx.AsyncClient(timeout=None) as client:
+        timeout = httpx.Timeout(connect=10, read=45, write=15, pool=10)
+        async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", self._url(), headers=self._headers(), json=payload) as response:
                 response.raise_for_status()
                 async for line in response.aiter_lines():
@@ -129,10 +130,43 @@ class DeterministicGateway(LLMGateway):
             if "answer" in data:
                 return LLMResponse(content="我们的不锈钢饰品默认使用 316L 材质，样品和生产细节可以由销售进一步确认。" if chinese else data["answer"])
             if "products" in data:
-                skus = ", ".join(str(item["sku"]) for item in data["products"])
-                return LLMResponse(content=f"产品目录匹配到：{skus}。" if chinese else f"The product catalog matched: {skus}.")
-        if "ring" in user and "search_products" in tool_names and any(word in user for word in ("need", "want", "looking")):
-            return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", {"category": "ring"})])
+                products = data["products"]
+                category_question = any(word in user for word in ("品类", "类别", "分类", "有哪些产品", "什么产品", "categories", "what products"))
+                if category_question:
+                    categories = dict.fromkeys(str(item.get("category", "")) for item in products if item.get("category"))
+                    labels = {"ring": "戒指", "necklace": "项链", "bracelet": "手链", "jewelry": "其他饰品"}
+                    if chinese:
+                        names = "、".join(labels.get(category, category) for category in categories)
+                        return LLMResponse(content=f"目前可以查询这些品类：{names}。你想先看哪一类？")
+                    return LLMResponse(content=f"I can help you browse: {', '.join(categories)}. Which category would you like to see?")
+                examples = products[:3]
+                if chinese:
+                    lines = "；".join(f"{item.get('name') or item['sku']}（{item['sku']}）" for item in examples)
+                    suffix = "这些是公开目录参考款，具体供货信息可再确认。" if examples and any(item.get("is_external_reference") for item in examples) else ""
+                    return LLMResponse(content=f"我先给你看几款匹配的：{lines}。{suffix}" if examples else "当前目录里暂时没有匹配款。你可以换个品类或描述再试试。")
+                skus = ", ".join(str(item.get("sku", "")) for item in examples)
+                return LLMResponse(content=f"Here are a few matching catalog items: {skus}.")
+
+        greetings = ("你好", "您好", "嗨", "早上好", "下午好", "晚上好", "hello", "hi", "hey", "good morning")
+        if user.strip().strip("!！。,. ") in greetings:
+            return LLMResponse(content="你好！我可以帮你查产品品类、款式、材质和公开参考价。你想先了解什么？" if chinese else "Hi! I can help you browse styles, materials, and public reference prices. What are you looking for?")
+
+        category_aliases = {
+            "ring": ("ring", "rings", "戒指", "指环"),
+            "necklace": ("necklace", "necklaces", "项链"),
+            "bracelet": ("bracelet", "bracelets", "手链", "手镯"),
+            "jewelry": ("jewelry", "饰品", "珠宝"),
+        }
+        category = next((name for name, aliases in category_aliases.items() if any(alias in user for alias in aliases)), None)
+        category_request = category is not None and any(word in user for word in ("想", "找", "看看", "看", "有没有", "推荐", "要", "需要", "show", "find", "looking", "want", "need"))
+        category_question = any(word in user for word in ("品类", "类别", "分类", "有哪些产品", "什么产品", "categories", "what products"))
+        if "search_products" in tool_names and (category_request or category_question):
+            arguments = {"category": category} if category_request else {}
+            return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", arguments)])
+        if any(word in user for word in ("价格", "多少钱", "报价", "price", "quote")):
+            return LLMResponse(content="把产品编号或款式图片发给我，我就可以帮你查公开参考价。" if chinese else "Share the product SKU or a photo and I can look up its public reference price.")
+        if chinese and any(word in user for word in ("产品", "款式", "饰品", "珠宝")) and "search_products" in tool_names:
+            return LLMResponse(content="可以帮你查产品目录。目前可查戒指、项链、手链等品类，你想先看哪一类？")
         import re
         sku_match = re.search(r"(?:r\d{4}|jw-[a-f0-9]{8}-\d{2})", user)
         if any(word in user for word in ("price", "报价", "价格", "多少钱")) and "get_product_price" in tool_names and sku_match:

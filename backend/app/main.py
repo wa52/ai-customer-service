@@ -8,6 +8,7 @@ from app.api.chat import router as chat_router
 from app.api.admin import router as admin_router
 from app.api.session import router as session_router
 from app.api.upload import router as upload_router
+from app.api.products import router as products_router
 
 app = FastAPI(title="AI Customer Service", version="0.1.0")
 app.add_middleware(
@@ -20,6 +21,7 @@ app.add_middleware(
 app.include_router(session_router, prefix="/api/v1")
 app.include_router(chat_router, prefix="/api/v1")
 app.include_router(upload_router, prefix="/api/v1")
+app.include_router(products_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 app.mount("/admin", StaticFiles(directory=Path(__file__).parent / "static" / "admin"), name="admin-static")
 

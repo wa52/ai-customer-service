@@ -1,14 +1,18 @@
 from typing import Any
+import os
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.capabilities.executor import ActionExecutor
+from app.config.local_config import load_admin_settings, save_admin_settings
 from app.config.settings import Settings, get_settings
 from app.customer_service.runtime import customer_service_runtime
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-_runtime_settings = get_settings()
+_runtime_settings = load_admin_settings(get_settings())
+customer_service_runtime.gateway.settings = _runtime_settings
+customer_service_runtime.executor = ActionExecutor(_runtime_settings)
 
 
 class AdminConfigRequest(BaseModel):
@@ -55,7 +59,7 @@ def _public_config(settings: Settings) -> dict[str, Any]:
             "knowledge": {"enabled": settings.knowledge_capability_enabled, "source": settings.knowledge_data_source, "base_url": settings.knowledge_base_url},
             "vision": {"enabled": settings.vision_capability_enabled, "source": settings.vision_data_source, "base_url": settings.vision_base_url},
         },
-        "storage_note": "模型配置仅保存在当前后端进程内存中，重启后需要重新填写。",
+        "storage_note": "模型设置保存在本机；Windows 使用 DPAPI 加密 API Key 和数据库连接。" if os.name == "nt" else "模型设置会保存在本机；当前系统不支持 DPAPI 加密，API Key 仅保留在当前进程中。",
     }
 
 
@@ -70,7 +74,9 @@ def update_admin_config(request: AdminConfigRequest) -> dict[str, Any]:
     updates = request.model_dump(exclude={"llm_api_key"})
     if request.llm_api_key is not None and request.llm_api_key.strip():
         updates["llm_api_key"] = request.llm_api_key.strip()
-    _runtime_settings = _runtime_settings.model_copy(update=updates)
+    updated_settings = _runtime_settings.model_copy(update=updates)
+    save_admin_settings(updated_settings)
+    _runtime_settings = updated_settings
     customer_service_runtime.gateway.settings = _runtime_settings
     customer_service_runtime.executor = ActionExecutor(_runtime_settings)
     return _public_config(_runtime_settings)

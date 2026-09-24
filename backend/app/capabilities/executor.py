@@ -17,6 +17,8 @@ class ProductSearchArguments(BaseModel):
     color: str | None = None
     style: str | None = None
     gender: str | None = None
+    query: str | None = Field(default=None, max_length=120, description="Free-text attribute search, such as silver, gold, or a design keyword")
+    limit: int = Field(default=3, ge=1, le=3, description="Maximum three distinct styles")
 
 
 class ProductInformationArguments(BaseModel):

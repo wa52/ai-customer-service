@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from app.capabilities.executor import ActionExecutor
 from app.capabilities.public_seed import PublicKnowledgeCapability, PublicProductCapability, PublicPricingCapability
 from app.config.settings import Settings
-from app.customer_service.runtime import CustomerServiceRuntime
+from app.customer_service.runtime import CustomerServiceRuntime, _recommendation_requirements
 from app.main import app
 from app.runtime.llm.gateway import LLMResponse, StreamEvent, ToolCall
 from app.schemas.runtime import CapabilityResult
@@ -27,6 +27,7 @@ class FakeGateway:
         return LLMResponse(content="I found three ring options in our catalog.")
 
     async def stream(self, messages: list[dict], tools: list[dict]) -> AsyncIterator[StreamEvent]:
+        self.calls.append((messages, tools))
         yield StreamEvent(text="The ")
         yield StreamEvent(text="catalog ")
         yield StreamEvent(text="has ")
@@ -53,6 +54,58 @@ def test_native_tool_calling_executes_product_tool(isolated_runtime: FakeGateway
     assert "search_products" in {tool["function"]["name"] for tool in isolated_runtime.calls[0][1]}
     assert isolated_runtime.calls[1][0][-1]["role"] == "tool"
     assert isolated_runtime.calls[0][0][-1]["role"] == "user"
+
+
+def test_chinese_recommendation_searches_and_limits_to_three_distinct_styles() -> None:
+    settings = Settings(product_data_source="public_seed", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")
+    runtime = CustomerServiceRuntime(FakeGateway(), ActionExecutor(settings))
+    session = client.post("/api/v1/chat/sessions").json()
+
+    async def collect() -> list[str]:
+        return [chunk async for chunk in runtime.stream_message(session["id"], "银色的手镯有哪些")]
+
+    import asyncio
+
+    asyncio.run(collect())
+    candidates = memory_store.get_state(session["id"]).candidate_products
+    products = [runtime.executor.product.get(sku).data["product"] for sku in candidates]
+    assert len(products) == 3
+    assert all(item["category"] == "bracelet" and "silver" in str(item["name"]).casefold() for item in products)
+    assert len({str(item["name"]).split(" / ")[0] for item in products}) == 3
+
+
+def test_silver_anklet_request_maps_both_category_and_specific_style_keyword() -> None:
+    assert _recommendation_requirements("推荐三个银色脚链") == {"category": "bracelet", "query": "silver anklet", "limit": 3}
+
+
+def test_silver_anklet_with_no_catalog_match_is_not_replaced_by_bracelets() -> None:
+    settings = Settings(product_data_source="public_seed", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")
+    gateway = FakeGateway()
+    runtime = CustomerServiceRuntime(gateway, ActionExecutor(settings))
+    session = client.post("/api/v1/chat/sessions").json()
+
+    async def collect() -> str:
+        return "".join([chunk async for chunk in runtime.stream_message(session["id"], "推荐三个银色脚链")])
+
+    import asyncio
+
+    reply = asyncio.run(collect())
+    assert memory_store.get_state(session["id"]).candidate_products == []
+    assert "暂时没有找到银色脚链" in reply
+    assert gateway.calls == []
+
+
+def test_recommendation_stream_includes_three_translated_product_cards(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings(product_data_source="public_seed", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")
+    runtime = CustomerServiceRuntime(FakeGateway(), ActionExecutor(settings))
+    monkeypatch.setattr(chat_api, "customer_service_runtime", runtime)
+    session = client.post("/api/v1/chat/sessions").json()
+    response = client.post("/api/v1/chat/messages/stream", json={"session_id": session["id"], "content": "银色的手镯有哪些"})
+
+    product_event = next(event for event in response.text.split("\n\n") if event.startswith("event: products"))
+    payload = __import__("json").loads(next(line[6:] for line in product_event.splitlines() if line.startswith("data: ")))
+    assert len(payload) == 3
+    assert all(item["category"] == "bracelet" and item["display_name"] for item in payload)
 
 
 def test_tool_configuration_controls_registry() -> None:
@@ -99,6 +152,19 @@ def test_streaming_forwards_gateway_chunks() -> None:
     assert response.status_code == 200
     assert response.text.count("event: token") == 4
     assert '"text": "The "' in response.text
+    assert "event: done" in response.text
+
+
+def test_streaming_reports_runtime_errors_as_sse_events(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def broken_stream(session_id: str, content: str) -> AsyncIterator[str]:
+        raise TimeoutError("upstream stalled")
+        yield "unreachable"
+
+    monkeypatch.setattr(chat_api.customer_service_runtime, "stream_message", broken_stream)
+    session = client.post("/api/v1/chat/sessions").json()
+    response = client.post("/api/v1/chat/messages/stream", json={"session_id": session["id"], "content": "推荐银色网球链"})
+    assert response.status_code == 200
+    assert "event: error" in response.text
     assert "event: done" in response.text
 
 
