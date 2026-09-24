@@ -1,6 +1,8 @@
 from app.config.settings import Settings
 import asyncio
 
+import pytest
+
 from app.runtime.llm.gateway import DeterministicGateway, LLMGateway
 
 
@@ -23,3 +25,53 @@ def test_mock_gateway_routes_price_question_to_tool() -> None:
         [{"type": "function", "function": {"name": "get_product_price"}}],
     ))
     assert response.tool_calls[0].name == "get_product_price"
+    assert response.tool_calls[0].arguments == {"sku": "R1001"}
+
+
+def test_mock_gateway_asks_for_sku_when_price_question_has_no_product_id() -> None:
+    response = asyncio.run(DeterministicGateway().complete(
+        [{"role": "user", "content": "What is the price?"}],
+        [{"type": "function", "function": {"name": "get_product_price"}}],
+    ))
+    assert response.tool_calls == []
+    assert "SKU" in response.content
+
+
+def test_mock_gateway_does_not_match_sku_prefix_inside_longer_identifier() -> None:
+    response = asyncio.run(DeterministicGateway().complete(
+        [{"role": "user", "content": "What is the price of R10010?"}],
+        [{"type": "function", "function": {"name": "get_product_price"}}],
+    ))
+    assert response.tool_calls == []
+    assert "SKU" in response.content
+
+
+def test_mock_gateway_routes_quote_request_for_sku_to_price_tool() -> None:
+    response = asyncio.run(DeterministicGateway().complete(
+        [{"role": "user", "content": "Can you quote R1001?"}],
+        [{"type": "function", "function": {"name": "get_product_price"}}],
+    ))
+    assert response.tool_calls[0].name == "get_product_price"
+    assert response.tool_calls[0].arguments == {"sku": "R1001"}
+
+
+def test_mock_gateway_price_lookup_takes_precedence_over_category_browsing() -> None:
+    response = asyncio.run(DeterministicGateway().complete(
+        [{"role": "user", "content": "I'm looking for rings. What is the price of R1001?"}],
+        [
+            {"type": "function", "function": {"name": "search_products"}},
+            {"type": "function", "function": {"name": "get_product_price"}},
+        ],
+    ))
+    assert response.tool_calls[0].name == "get_product_price"
+    assert response.tool_calls[0].arguments == {"sku": "R1001"}
+
+
+@pytest.mark.parametrize("question", ["R1001的价格", "价格R1001", "R1001价格"])
+def test_mock_gateway_routes_chinese_price_question_for_sku(question: str) -> None:
+    response = asyncio.run(DeterministicGateway().complete(
+        [{"role": "user", "content": question}],
+        [{"type": "function", "function": {"name": "get_product_price"}}],
+    ))
+    assert response.tool_calls[0].name == "get_product_price"
+    assert response.tool_calls[0].arguments == {"sku": "R1001"}

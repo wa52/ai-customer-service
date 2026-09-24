@@ -5,7 +5,8 @@ from app.customer_service.runtime import customer_service_runtime
 from app.main import app
 
 
-def test_admin_config_never_exposes_api_key() -> None:
+def test_admin_config_never_exposes_api_key(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     original_settings = admin_api._runtime_settings
     original_gateway = customer_service_runtime.gateway.settings
     original_executor = customer_service_runtime.executor

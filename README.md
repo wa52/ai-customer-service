@@ -2,6 +2,15 @@
 
 网站内嵌式 AI 智能客服与公开珠宝商品目录，按 [REQUIREMENTS.md](REQUIREMENTS.md) 组织。核心是 Customer Service Runtime、商品数据检索，以及可关联 SKU 的图片找款。
 
+## 持续开发与阶段状态
+
+- [LOOP.md](LOOP.md)：任务拆解、实现/测试/独立验收规则及人工关卡
+- [ROADMAP.md](ROADMAP.md)：阶段范围与状态
+- [PROJECT_STATE.md](PROJECT_STATE.md)：当前目标、证据、阻塞和下一步
+- [FAILURES.md](FAILURES.md)：失败与阻塞台账
+
+每轮工作以当前仓库证据为准。实现完成或测试通过都不等于独立验收通过；没有独立 Verifier 时不得标记为 `ACCEPTED`。
+
 ## 当前一期范围
 
 - FastAPI Chat API、Session API、图片上传接口、人工接管接口和商品目录 API

@@ -160,17 +160,18 @@ class DeterministicGateway(LLMGateway):
         category = next((name for name, aliases in category_aliases.items() if any(alias in user for alias in aliases)), None)
         category_request = category is not None and any(word in user for word in ("想", "找", "看看", "看", "有没有", "推荐", "要", "需要", "show", "find", "looking", "want", "need"))
         category_question = any(word in user for word in ("品类", "类别", "分类", "有哪些产品", "什么产品", "categories", "what products"))
+        import re
+        sku_match = re.search(r"(?<![a-z0-9])(?:r\d{4}|jw-[a-f0-9]{8}-\d{2})(?![a-z0-9])", user)
+        price_question = any(word in user for word in ("价格", "多少钱", "报价", "price", "quote"))
+        if price_question and "get_product_price" in tool_names and sku_match:
+            return LLMResponse(tool_calls=[ToolCall("fallback_price", "get_product_price", {"sku": sku_match.group(0).upper()})])
         if "search_products" in tool_names and (category_request or category_question):
             arguments = {"category": category} if category_request else {}
             return LLMResponse(tool_calls=[ToolCall("fallback_search", "search_products", arguments)])
-        if any(word in user for word in ("价格", "多少钱", "报价", "price", "quote")):
-            return LLMResponse(content="把产品编号或款式图片发给我，我就可以帮你查公开参考价。" if chinese else "Share the product SKU or a photo and I can look up its public reference price.")
         if chinese and any(word in user for word in ("产品", "款式", "饰品", "珠宝")) and "search_products" in tool_names:
             return LLMResponse(content="可以帮你查产品目录。目前可查戒指、项链、手链等品类，你想先看哪一类？")
-        import re
-        sku_match = re.search(r"(?:r\d{4}|jw-[a-f0-9]{8}-\d{2})", user)
-        if any(word in user for word in ("price", "报价", "价格", "多少钱")) and "get_product_price" in tool_names and sku_match:
-            return LLMResponse(tool_calls=[ToolCall("fallback_price", "get_product_price", {"sku": sku_match.group(0).upper()})])
+        if price_question:
+            return LLMResponse(content="把产品编号或款式图片发给我，我就可以帮你查公开参考价。" if chinese else "Share the product SKU or a photo and I can look up its public reference price.")
         if any(word in user for word in ("image", "photo", "图片", "照片", "找款", "相似")) and "search_similar_product_by_image" in tool_names:
             return LLMResponse(tool_calls=[ToolCall("fallback_vision", "search_similar_product_by_image", {"description": raw_user})])
         if any(word in user for word in ("material", "specification", "材质", "材料", "316l")) and "search_knowledge" in tool_names:
