@@ -1,14 +1,13 @@
 import logging
-import hashlib
 import json
 import re
 from pathlib import Path
-from urllib.parse import urlsplit
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 
 from app.customer_service.runtime import customer_service_runtime
+from app.vision.product_images import product_image_filename
 
 router = APIRouter(prefix="/products", tags=["products"])
 logger = logging.getLogger(__name__)
@@ -25,10 +24,7 @@ def _load_name_translations() -> dict[str, str]:
 
 
 def _image_filename(url: str) -> str | None:
-    suffix = Path(urlsplit(url).path).suffix.lower()
-    if suffix not in {".webp", ".jpg", ".jpeg", ".png"}:
-        return None
-    return f"{hashlib.sha256(url.encode('utf-8')).hexdigest()}{suffix}"
+    return product_image_filename(url)
 
 
 @router.get("")

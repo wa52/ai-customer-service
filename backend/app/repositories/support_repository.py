@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -100,16 +101,59 @@ class PostgresVisionCapability:
         import psycopg
 
         vector = str(embedding)
+        model_name = self._embedder.model_name if self._embedder is not None else "openai/clip-vit-base-patch32"
+        model_revision = self._embedder.revision if self._embedder is not None else "3d74acf9a28c67741b2f4f2ea7635f0aaf6f0268"
         with psycopg.connect(self.database_url, row_factory=psycopg.rows.dict_row) as connection:
-            rows = connection.execute(
-                "SELECT image_id, category, image_path, description, source_url, data_kind, is_external_reference, 1 - (embedding <=> %s::vector) AS similarity FROM vision_metadata WHERE embedding IS NOT NULL ORDER BY embedding <=> %s::vector LIMIT 10",
-                [vector, vector],
-            ).fetchall()
+            try:
+                rows = connection.execute(
+                    """SELECT p.sku, p.name, p.category, p.material, p.plating, p.color, p.size,
+                              p.moq, p.reference_price, p.currency, p.image_url, p.source_url,
+                              p.source_name, p.data_kind, p.is_external_reference,
+                              1 - (e.embedding <=> %s::vector) AS similarity
+                       FROM product_image_embeddings AS e
+                       JOIN products AS p ON p.sku = e.sku AND p.image_url = e.image_url
+                       WHERE e.embedding IS NOT NULL AND e.model_name = %s AND e.model_revision = %s
+                       ORDER BY e.embedding <=> %s::vector
+                       LIMIT 30""",
+                    [vector, model_name, model_revision, vector],
+                ).fetchall()
+            except psycopg.errors.UndefinedTable:
+                connection.rollback()
+                rows = []
+            distinct_rows = []
+            seen_styles: set[str] = set()
+            for row in rows:
+                style = re.sub(r"\s*/\s*[^/]*$", "", str(row.get("name", ""))).casefold().strip()
+                style = style or str(row.get("sku", ""))
+                if style in seen_styles:
+                    continue
+                seen_styles.add(style)
+                distinct_rows.append(row)
+                if len(distinct_rows) == 3:
+                    break
+            rows = distinct_rows
+            mode = "pgvector_product_catalog"
+            result_note = "CLIP similarity search over product images, joined to purchasable catalog SKUs."
+            sources = ["postgres_product_image_embeddings"]
+            if not rows:
+                rows = connection.execute(
+                    """SELECT image_id, category, image_path, description, source_url, data_kind,
+                              is_external_reference,
+                              1 - (embedding <=> %s::vector) AS similarity
+                       FROM vision_metadata
+                       WHERE embedding IS NOT NULL
+                       ORDER BY embedding <=> %s::vector
+                       LIMIT 10""",
+                    [vector, vector],
+                ).fetchall()
+                mode = "pgvector_dataset_fallback"
+                result_note = "No product-image vectors are indexed yet; returning legacy dataset references."
+                sources = ["postgres_pgvector_vision_dataset"]
         return CapabilityResult(
             success=True,
-            data={"matches": [dict(row) for row in rows], "description": query, "mode": "pgvector", "note": note},
+            data={"matches": [dict(row) for row in rows], "description": query, "mode": mode, "note": result_note, "query_note": note},
             confidence=0.85 if rows else 0.2,
-            sources=["postgres_pgvector_vision"],
+            sources=sources,
         )
 
     def search_tool(self, arguments: dict[str, object], _state) -> CapabilityResult:

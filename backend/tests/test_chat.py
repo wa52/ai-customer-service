@@ -237,3 +237,46 @@ def test_upload_image_runs_vision_capability(monkeypatch: pytest.MonkeyPatch) ->
     )
     assert response.status_code == 200
     assert response.json()["data"]["matches"][0]["image_id"] == "HF-JEWELRY-0001"
+
+
+def test_upload_image_returns_product_sku_card_fields(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeVision:
+        def search_image_bytes(self, _content: bytes, _filename: str) -> CapabilityResult:
+            return CapabilityResult(
+                success=True,
+                data={
+                    "matches": [{
+                        "sku": "JW-TEST-01",
+                        "name": "Silver stainless steel ring",
+                        "category": "ring",
+                        "reference_price": 3.25,
+                        "currency": "USD",
+                        "image_url": "https://catalog.example/ring.webp",
+                        "source_url": "https://catalog.example/products/ring",
+                        "similarity": 0.91,
+                    }],
+                    "mode": "pgvector_product_catalog",
+                },
+                sources=["postgres_product_image_embeddings"],
+            )
+
+    class RuntimeStub:
+        class Executor:
+            vision = FakeVision()
+
+        executor = Executor()
+
+    monkeypatch.setattr(upload_api, "customer_service_runtime", RuntimeStub())
+    session = client.post("/api/v1/chat/sessions").json()
+    response = client.post(
+        "/api/v1/chat/upload-image",
+        data={"session_id": session["id"]},
+        files={"image": ("reference.jpg", b"fake-image-bytes", "image/jpeg")},
+    )
+
+    assert response.status_code == 200
+    product = response.json()["data"]["matches"][0]
+    assert product["sku"] == "JW-TEST-01"
+    assert product["display_name"] == product["name"]
+    assert product["source_url"].endswith("/products/ring")
+    assert product["similarity"] == 0.91

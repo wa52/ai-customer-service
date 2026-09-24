@@ -5,7 +5,7 @@ import './styles.css';
 import './catalog.css';
 import './support.css';
 
-type VisionMatch = { image_id?: string; category?: string; description?: string; similarity?: number; source_url?: string };
+type VisionMatch = CatalogProduct & { image_id?: string; description?: string; similarity?: number };
 type Message = { role: 'customer' | 'assistant'; content: string; attachmentUrl?: string; products?: CatalogProduct[] };
 type CatalogProduct = { sku: string; name: string; display_name?: string; category: string; material?: string; plating?: string; color?: string; size?: string; moq?: number | null; reference_price?: number | null; currency?: string; image_url?: string; source_url?: string; source_name?: string };
 const API = import.meta.env.VITE_API_URL ?? 'http://127.0.0.1:8011/api/v1';
@@ -114,13 +114,18 @@ function App({ compact = false, onClose }: { compact?: boolean; onClose?: () => 
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail ?? 'Image search failed');
       const matches = (data.data?.matches ?? []) as VisionMatch[];
-      const chinese = /[\u4e00-\u9fff]/.test(input);
-      const summary = matches.length
+      const products = matches.filter((match) => Boolean(match.sku)).slice(0, 3);
+      const chinese = /[\u4e00-\u9fff]/.test(input) || /^zh(?:-|$)/i.test(navigator.language);
+      const summary = products.length
+        ? chinese
+          ? `找到 ${products.length} 款相似商品，已按图片相似度排序。点击商品卡片查看公开供应商商品页与下单信息；参考价格及供货情况以供应商页面为准。`
+          : `I found ${products.length} similar products, ranked by image similarity. Select a card for the supplier's product and ordering page; confirm pricing and availability with the supplier.`
+        : matches.length
         ? chinese
           ? `找到 ${matches.length} 张相似参考图片：${matches.slice(0, 3).map((match) => match.image_id ?? match.category ?? '参考款').join('、')}。这些来自公开图片数据集，可供款式参考。`
           : `I found ${matches.length} visually similar styles: ${matches.slice(0, 3).map((match) => match.image_id ?? match.category ?? 'catalog style').join(', ')}. These are public reference images for inspiration.`
         : chinese ? '暂时没有找到相似图片。你可以告诉我品类或材质，我再帮你缩小范围。' : 'I could not find a close visual match yet. Please share the category or material and I can narrow the search.';
-      setMessages((current) => [...current, { role: 'assistant', content: summary }]);
+      setMessages((current) => [...current, { role: 'assistant', content: summary, products }]);
     } catch (error) {
       setMessages((current) => [...current, { role: 'assistant', content: error instanceof Error ? error.message : 'Image search is temporarily unavailable.' }]);
     } finally { setBusy(false); }
@@ -169,7 +174,7 @@ function App({ compact = false, onClose }: { compact?: boolean; onClose?: () => 
       setMessages((current) => [...current.slice(0, -1), { role: 'assistant', content: message }]);
     } finally { setBusy(false); }
   }
-  return <div className={`widget${compact ? ' support-chat' : ''}`}><header><div className="mark">✦</div><div><strong>Product concierge</strong><small>{modelConfigured === false ? 'Online · Basic catalog mode' : 'Online · AI assisted'}</small></div><button type="button" aria-label="关闭客服" onClick={onClose}>×</button></header><section className="messages" ref={messagesRef}>{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.attachmentUrl && <img className="attachment" src={message.attachmentUrl} alt="Uploaded product reference" />}<p>{message.content}</p>{Boolean(message.products?.length) && <div className="chat-recommendations">{message.products?.slice(0, 3).map((product) => <a className="chat-product-card" href={product.source_url || '#'} target={product.source_url ? '_blank' : undefined} rel="noreferrer" key={product.sku}>{product.image_url ? <img src={product.image_url} alt="" loading="lazy" /> : <span className="chat-product-placeholder">✦</span>}<span className="chat-product-info"><strong>{product.display_name || product.name}</strong><small>{product.sku}</small><small>{product.reference_price != null ? `参考价 ${product.currency || 'USD'} ${product.reference_price.toFixed(2)}` : '公开目录参考'}</small></span>{product.source_url && <span className="chat-product-cta">前往购买 ↗</span>}</a>)}</div>}</div>)}{busy && <div className="typing">Checking the best way to help…</div>}</section><footer>{imagePreview && <div className="image-draft"><img src={imagePreview} alt="Selected product reference" /><button type="button" onClick={clearImage} aria-label="Remove selected image">×</button></div>}<div className="composer"><input className="file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseImage} id="product-image" /><label className="attach-button" htmlFor="product-image" aria-label="Upload product image" title="Upload product image">⌁</label><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about a product…" /></div><button onClick={image ? searchImage : send} disabled={busy || (!input.trim() && !image)}>{image ? 'Find ↗' : 'Send ↗'}</button></footer></div>;
+  return <div className={`widget${compact ? ' support-chat' : ''}`}><header><div className="mark">✦</div><div><strong>Product concierge</strong><small>{modelConfigured === false ? 'Online · Basic catalog mode' : 'Online · AI assisted'}</small></div><button type="button" aria-label="关闭客服" onClick={onClose}>×</button></header><section className="messages" ref={messagesRef}>{messages.map((message, index) => <div key={index} className={`message ${message.role}`}>{message.attachmentUrl && <img className="attachment" src={message.attachmentUrl} alt="Uploaded product reference" />}<p>{message.content}</p>{Boolean(message.products?.length) && <div className="chat-recommendations">{message.products?.slice(0, 3).map((product) => <a className="chat-product-card" href={product.source_url || '#'} target={product.source_url ? '_blank' : undefined} rel="noreferrer" key={product.sku}>{product.image_url ? <img src={product.image_url} alt="" loading="lazy" /> : <span className="chat-product-placeholder">✦</span>}<span className="chat-product-info"><strong>{product.display_name || product.name}</strong><small>{product.sku}</small><small>{product.reference_price != null ? `参考价 ${product.currency || 'USD'} ${product.reference_price.toFixed(2)}` : '公开目录参考'}</small>{'similarity' in product && typeof product.similarity === 'number' && <small>图片相似度 {(product.similarity * 100).toFixed(0)}%</small>}</span>{product.source_url && <span className="chat-product-cta">前往购买 ↗</span>}</a>)}</div>}</div>)}{busy && <div className="typing">Checking the best way to help…</div>}</section><footer>{imagePreview && <div className="image-draft"><img src={imagePreview} alt="Selected product reference" /><button type="button" onClick={clearImage} aria-label="Remove selected image">×</button></div>}<div className="composer"><input className="file-input" type="file" accept="image/jpeg,image/png,image/webp" onChange={chooseImage} id="product-image" /><label className="attach-button" htmlFor="product-image" aria-label="Upload product image" title="Upload product image">⌁</label><textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); send(); } }} placeholder="Ask about a product…" /></div><button onClick={image ? searchImage : send} disabled={busy || (!input.trim() && !image)}>{image ? 'Find ↗' : 'Send ↗'}</button></footer></div>;
 }
 
 createRoot(document.getElementById('root')!).render(<StrictMode>{window.location.pathname.startsWith('/products') ? <ProductSite /> : <App />}</StrictMode>);

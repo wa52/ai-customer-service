@@ -26,8 +26,12 @@ class ClipEmbedder:
         from PIL import Image
 
         self._load()
-        image = Image.open(path).convert("RGB")
-        inputs = self._processor(images=image, return_tensors="pt")
+        with Image.open(path) as source_image:
+            image = source_image.convert("RGB")
+            try:
+                inputs = self._processor(images=image, return_tensors="pt")
+            finally:
+                image.close()
         with self._torch.no_grad():
             vector = self._model.get_image_features(**inputs)[0]
         vector = vector / vector.norm(p=2)
