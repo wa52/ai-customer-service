@@ -78,7 +78,7 @@ def test_silver_anklet_request_maps_both_category_and_specific_style_keyword() -
     assert _recommendation_requirements("推荐三个银色脚链") == {"category": "bracelet", "query": "silver anklet", "limit": 3}
 
 
-def test_silver_anklet_with_no_catalog_match_is_not_replaced_by_bracelets() -> None:
+def test_silver_anklet_with_no_exact_match_shows_three_labeled_bracelet_alternatives() -> None:
     settings = Settings(product_data_source="public_seed", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")
     gateway = FakeGateway()
     runtime = CustomerServiceRuntime(gateway, ActionExecutor(settings))
@@ -90,9 +90,26 @@ def test_silver_anklet_with_no_catalog_match_is_not_replaced_by_bracelets() -> N
     import asyncio
 
     reply = asyncio.run(collect())
-    assert memory_store.get_state(session["id"]).candidate_products == []
-    assert "暂时没有找到银色脚链" in reply
+    state = memory_store.get_state(session["id"])
+    products = [runtime.executor.product.get(sku).data["product"] for sku in state.candidate_products]
+    assert len(products) == 3
+    assert all(item["category"] == "bracelet" and "silver" in str(item["name"]).casefold() for item in products)
+    assert "没有银色脚链" in reply
+    assert "替代参考（不是脚链）" in reply
     assert gateway.calls == []
+
+
+def test_silver_anklet_fallback_stream_exposes_three_product_page_links(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = Settings(product_data_source="public_seed", pricing_data_source="mock", knowledge_data_source="mock", vision_data_source="mock")
+    runtime = CustomerServiceRuntime(FakeGateway(), ActionExecutor(settings))
+    monkeypatch.setattr(chat_api, "customer_service_runtime", runtime)
+    session = client.post("/api/v1/chat/sessions").json()
+    response = client.post("/api/v1/chat/messages/stream", json={"session_id": session["id"], "content": "推荐三个银色脚链"})
+
+    product_event = next(event for event in response.text.split("\n\n") if event.startswith("event: products"))
+    payload = __import__("json").loads(next(line[6:] for line in product_event.splitlines() if line.startswith("data: ")))
+    assert len(payload) == 3
+    assert all(item["category"] == "bracelet" and item.get("source_url", "").startswith("http") for item in payload)
 
 
 def test_recommendation_stream_includes_three_translated_product_cards(monkeypatch: pytest.MonkeyPatch) -> None:

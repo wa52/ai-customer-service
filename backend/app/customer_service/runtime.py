@@ -88,6 +88,21 @@ class CustomerServiceRuntime:
             state.candidate_products = [str(item["sku"]) for item in products if item.get("sku")]
             state.last_action = "search_products"
             if not products:
+                if search_requirements["query"] == "silver anklet":
+                    alternatives = self.executor.product.search(
+                        {"category": "bracelet"}, query="silver", limit=60
+                    )
+                    products = _top_three_styles(alternatives.data.get("products", []))
+                    if products:
+                        state.candidate_products = [str(item["sku"]) for item in products if item.get("sku")]
+                        reply = (
+                            "公开目录暂时没有银色脚链。下面是 3 款银色手链替代参考（不是脚链）；点击卡片可前往供应商商品购买页。"
+                            if detect_language(content) == "zh"
+                            else "The public catalog has no silver anklets right now. Here are three silver bracelet alternatives (not anklets); select a card to open the supplier's product purchase page."
+                        )
+                        memory_store.append(session_id, "assistant", reply)
+                        yield reply
+                        return
                 reply = (
                     "我查了当前公开目录，暂时没有找到银色脚链。可以改看银色手链，或金色脚链；你更想看哪一种？"
                     if detect_language(content) == "zh"
